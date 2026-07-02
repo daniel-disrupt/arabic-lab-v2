@@ -246,8 +246,10 @@ function buildReader() {
   document.addEventListener('mousemove', onDragMove);
   document.addEventListener('mouseup', onDragEnd);
   reader.addEventListener('touchstart', onTouchStart, { passive: false });
+  reader.addEventListener('contextmenu', (e) => e.preventDefault());
   document.addEventListener('touchmove', onTouchMove, { passive: false });
   document.addEventListener('touchend', onTouchEnd);
+  document.addEventListener('touchcancel', onTouchCancel);
   document.getElementById('scroll-area').addEventListener('mousedown', (e) => {
     if (!e.target.classList.contains('word')) { clearSelection(); closeTray(); }
   });
@@ -260,9 +262,58 @@ function wordAtPoint(x, y) {
 function onDragStart(e) { const i = wordAtPoint(e.clientX, e.clientY); if (i<0) return; e.preventDefault(); dragActive=true; dragStartIdx=i; dragEndIdx=i; renderRange(i,i); }
 function onDragMove(e) { if (!dragActive) return; const i = wordAtPoint(e.clientX, e.clientY); if (i>=0 && i!==dragEndIdx) { dragEndIdx=i; renderRange(Math.min(dragStartIdx,dragEndIdx), Math.max(dragStartIdx,dragEndIdx)); } }
 function onDragEnd() { if (!dragActive) return; dragActive=false; const lo=Math.min(dragStartIdx,dragEndIdx), hi=Math.max(dragStartIdx,dragEndIdx); lastActionWasDrag = lo!==hi; lo===hi ? commitWord(lo) : commitPhrase(lo,hi); }
-function onTouchStart(e) { const t=e.touches[0], i=wordAtPoint(t.clientX,t.clientY); if (i<0) return; e.preventDefault(); dragActive=true; dragStartIdx=i; dragEndIdx=i; renderRange(i,i); }
-function onTouchMove(e) { if (!dragActive) return; const t=e.touches[0], i=wordAtPoint(t.clientX,t.clientY); if (i>=0 && i!==dragEndIdx) { dragEndIdx=i; renderRange(Math.min(dragStartIdx,dragEndIdx), Math.max(dragStartIdx,dragEndIdx)); } }
-function onTouchEnd() { if (!dragActive) return; dragActive=false; const lo=Math.min(dragStartIdx,dragEndIdx), hi=Math.max(dragStartIdx,dragEndIdx); lastActionWasDrag = lo!==hi; lo===hi ? commitWord(lo) : commitPhrase(lo,hi); }
+// Touch is also how mobile scrolls, and nearly all reading text is a `.word` span — so a plain
+// swipe-to-scroll that starts on a word must never be mistaken for a phrase drag-select. A
+// ~350ms hold arms drag mode (mirrors the long-press-to-select gesture mobile OSes already use);
+// anything that moves past a small threshold before that timer fires is treated as a scroll and
+// left completely alone (no preventDefault, so native scrolling is untouched).
+const TOUCH_LONG_PRESS_MS = 350;
+const TOUCH_MOVE_THRESHOLD = 10;
+let touchTimer = null, touchStartX = 0, touchStartY = 0, touchStartIdx = -1, touchArmed = false;
+function clearTouchTimer() { if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; } }
+function onTouchStart(e) {
+  const t = e.touches[0], i = wordAtPoint(t.clientX, t.clientY);
+  if (i < 0) return;
+  e.preventDefault(); // suppresses the synthetic mouse-event sequence, not scrolling
+  touchStartX = t.clientX; touchStartY = t.clientY; touchStartIdx = i; touchArmed = false;
+  clearTouchTimer();
+  touchTimer = setTimeout(() => {
+    touchArmed = true; dragActive = true; dragStartIdx = i; dragEndIdx = i;
+    renderRange(i, i);
+  }, TOUCH_LONG_PRESS_MS);
+}
+function onTouchMove(e) {
+  const t = e.touches[0];
+  if (!touchArmed) {
+    if (touchStartIdx < 0) return;
+    const dx = Math.abs(t.clientX - touchStartX), dy = Math.abs(t.clientY - touchStartY);
+    if (dx > TOUCH_MOVE_THRESHOLD || dy > TOUCH_MOVE_THRESHOLD) { clearTouchTimer(); touchStartIdx = -1; }
+    return;
+  }
+  e.preventDefault(); // actively drag-selecting now — block scroll while extending the range
+  const i = wordAtPoint(t.clientX, t.clientY);
+  if (i >= 0 && i !== dragEndIdx) { dragEndIdx = i; renderRange(Math.min(dragStartIdx, dragEndIdx), Math.max(dragStartIdx, dragEndIdx)); }
+}
+function onTouchEnd() {
+  clearTouchTimer();
+  if (touchArmed) {
+    touchArmed = false;
+    if (dragActive) {
+      dragActive = false;
+      const lo = Math.min(dragStartIdx, dragEndIdx), hi = Math.max(dragStartIdx, dragEndIdx);
+      lastActionWasDrag = lo !== hi;
+      lo === hi ? commitWord(lo) : commitPhrase(lo, hi);
+    }
+  } else if (touchStartIdx >= 0) {
+    commitWord(touchStartIdx); // released before the long-press armed — same instant tap as before
+  }
+  touchStartIdx = -1;
+}
+function onTouchCancel() {
+  clearTouchTimer();
+  touchArmed = false; touchStartIdx = -1;
+  if (dragActive) { dragActive = false; clearSelection(); }
+}
 function renderRange(lo, hi) { wordEls.forEach(({el,globalIdx:gi}) => { const inR=gi>=lo&&gi<=hi; el.classList.toggle('in-range',inR); el.classList.toggle('range-start',gi===lo); el.classList.toggle('range-end',gi===hi); el.classList.remove('selected'); }); }
 function clearSelection() { wordEls.forEach(({el}) => el.classList.remove('in-range','range-start','range-end','selected')); dragStartIdx=-1; dragEndIdx=-1; }
 function ciForIdx(idx) { const r = chunkRanges.find(r => idx>=r.startIdx && idx<=r.endIdx); return r ? r.ci : 0; }
@@ -488,13 +539,18 @@ function renderVerbsView() {
     groupWrap.appendChild(label);
 
     const row = document.createElement('div');
-    row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 8px' + (isCollapsed ? ';display:none' : '');
+    row.className = 'verb-pill-row' + (isCollapsed ? ' collapsed' : '');
     const sorted = groups[formNum].slice().sort((a, b) => (a.root || '￿').localeCompare(b.root || '￿', 'ar'));
     sorted.forEach(v => {
       const btn = document.createElement('button');
       btn.className = 'verb-pill' + (v.id===activeVerbId?' active':'');
       btn.innerHTML = '<span class="verb-pill-ar">'+v.arDisplay+'</span><span class="verb-pill-root">'+(v.root||'')+'</span>';
-      btn.onclick = () => { activeVerbId=v.id; activeConjTab='present'; renderVerbsView(); };
+      btn.onclick = () => {
+        activeVerbId=v.id; activeConjTab='present'; renderVerbsView();
+        if (window.matchMedia('(max-width:720px)').matches) {
+          document.getElementById('verb-card').scrollIntoView({ behavior:'smooth', block:'start' });
+        }
+      };
       row.appendChild(btn);
     });
     groupWrap.appendChild(row);
@@ -569,6 +625,7 @@ function renderVerbsView() {
       <div class="conj-tabs">
         ${conjTabs.map(t=>`<div class="conj-tab${t===activeConjTab?' active':''}" onclick="setConjTab('${t}')">${conjLabels[t]}</div>`).join('')}
       </div>
+      <div class="conj-table-wrap">
       <table class="conj-table">
         ${verb.conj[activeConjTab].map(row => isEn ? `
           <tr>
@@ -584,6 +641,7 @@ function renderVerbsView() {
           </tr>
         `).join('')}
       </table>
+      </div>
     ` : `<div style="font-size:13px;color:var(--mid);${isEn?'':'direction:rtl'}">${isEn ? 'No conjugations saved yet for this verb — pending edit' : 'אין עדיין נטיות שמורות לפועל זה — ממתין לעריכה'}</div>`;
 
   card.innerHTML = `
