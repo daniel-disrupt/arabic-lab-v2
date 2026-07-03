@@ -253,6 +253,53 @@ function buildReader() {
   document.getElementById('scroll-area').addEventListener('mousedown', (e) => {
     if (!e.target.classList.contains('word')) { clearSelection(); closeTray(); }
   });
+  // Touch equivalent of the mousedown handler above. A plain mousedown listener never fires
+  // reliably from touch: any tiny finger jitter during a tap starts a scroll gesture, and once
+  // that happens the browser suppresses the synthetic mouse events it would otherwise dispatch
+  // after touchend — so taps meant to dismiss the tray were silently swallowed. Tracking touch
+  // start/end directly and only treating it as a tap when movement stays under the same
+  // long-press-drag threshold used elsewhere fixes that without misfiring on scroll swipes.
+  let outsideTouchStartX = 0, outsideTouchStartY = 0, outsideTouchStartTarget = null, outsideTouchTracking = false;
+  const scrollAreaEl = document.getElementById('scroll-area');
+  scrollAreaEl.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    outsideTouchStartX = t.clientX; outsideTouchStartY = t.clientY;
+    outsideTouchStartTarget = e.target; outsideTouchTracking = true;
+  }, { passive: true });
+  scrollAreaEl.addEventListener('touchend', (e) => {
+    if (!outsideTouchTracking) return;
+    outsideTouchTracking = false;
+    const t = e.changedTouches[0];
+    const dx = Math.abs(t.clientX - outsideTouchStartX), dy = Math.abs(t.clientY - outsideTouchStartY);
+    if (dx > TOUCH_MOVE_THRESHOLD || dy > TOUCH_MOVE_THRESHOLD) return; // was a scroll, not a tap
+    if (!outsideTouchStartTarget.closest('.word')) { clearSelection(); closeTray(); }
+  });
+}
+
+/* ─────────────── MOBILE TRAY: swipe-down-to-close via the drag handle ─────────────── */
+function initTrayGestures() {
+  const handle = document.getElementById('tray-handle');
+  const tray = document.getElementById('tray');
+  let startY = null, dragging = false;
+  handle.addEventListener('touchstart', (e) => {
+    startY = e.touches[0].clientY; dragging = true;
+    tray.style.transition = 'none';
+  }, { passive: true });
+  handle.addEventListener('touchmove', (e) => {
+    if (!dragging) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 0) { tray.style.transform = 'translateY(' + dy + 'px)'; e.preventDefault(); }
+  }, { passive: false });
+  handle.addEventListener('touchend', (e) => {
+    if (!dragging) return;
+    dragging = false;
+    const dy = e.changedTouches[0].clientY - startY;
+    tray.style.transition = ''; tray.style.transform = '';
+    if (dy > 60) closeTray();
+  });
+  handle.addEventListener('touchcancel', () => {
+    dragging = false; tray.style.transition = ''; tray.style.transform = '';
+  });
 }
 
 function wordAtPoint(x, y) {
@@ -839,5 +886,6 @@ function renderAboutView() {
 }
 
 buildReader();
+initTrayGestures();
 renderVerbsView();
 applyAppLang();
