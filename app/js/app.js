@@ -130,6 +130,11 @@ function applyAppLang() {
   document.getElementById('tab-vocab').textContent = tabLabels.vocab;
   document.getElementById('tab-verbs').textContent = tabLabels.verbs;
   document.getElementById('tab-about').textContent = tabLabels.about;
+  document.getElementById('menu-tab-reader').textContent = tabLabels.reader;
+  document.getElementById('menu-tab-vocab').textContent = tabLabels.vocab;
+  document.getElementById('menu-tab-verbs').textContent = tabLabels.verbs;
+  document.getElementById('menu-tab-about').textContent = tabLabels.about;
+  document.getElementById('mobile-header-title').textContent = tabLabels[activeTabName];
   document.getElementById('vocab-title').textContent = t('vocabTitle');
   document.getElementById('vocab-search').placeholder = t('vocabSearchPlaceholder');
   document.getElementById('chip-all').textContent = t('filterAll');
@@ -194,18 +199,40 @@ function toggleVerbGroup(key) {
 }
 
 /* ─────────────── TAB SWITCHING ─────────────── */
+// The Reader tab opens by default; on mobile, Vocab/Verbs/About live behind the hamburger drawer
+// instead of a tab row, since there wasn't room for both that and the language switch.
+let activeTabName = 'reader';
 function switchTab(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.side-menu-item').forEach(t => t.classList.remove('active'));
   const viewEl = document.getElementById('view-' + name);
   if (viewEl) viewEl.classList.add('active');
   else { document.getElementById('view-reader').classList.add('active'); name = 'reader'; }
+  activeTabName = name;
   const tabs = document.querySelectorAll('.tab');
   const idx = ['reader','vocab','verbs','about'].indexOf(name);
   if (idx !== -1) tabs[idx].classList.add('active');
+  const menuItem = document.getElementById('menu-tab-' + name);
+  if (menuItem) menuItem.classList.add('active');
+  document.getElementById('mobile-header-title').textContent = TAB_LABELS[appLang][name];
   if (name === 'verbs') renderVerbsView();
   if (name === 'vocab') renderVocabView();
   if (name === 'about') renderAboutView();
+}
+
+/* ─────────────── HAMBURGER MENU (mobile) ─────────────── */
+function openMenu() {
+  document.getElementById('menu-backdrop').classList.add('open');
+  document.getElementById('side-menu').classList.add('open');
+}
+function closeMenu() {
+  document.getElementById('menu-backdrop').classList.remove('open');
+  document.getElementById('side-menu').classList.remove('open');
+}
+function selectMenuTab(name) {
+  switchTab(name);
+  closeMenu();
 }
 
 /* ─────────────── READER BUILD ─────────────── */

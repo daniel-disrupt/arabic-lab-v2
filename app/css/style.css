@@ -29,6 +29,48 @@ button, .tab, .word, .vocab-chip, .verb-pill, .verb-group-header { touch-action:
 }
 .tab.active { color: var(--black); border-bottom-color: var(--black); }
 
+/* ── HAMBURGER MENU (mobile only — see mobile media query for display:flex/block) ── */
+.hamburger-btn {
+  display: none; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border: none; background: transparent; color: var(--black);
+  cursor: pointer; flex-shrink: 0; border-radius: 6px; transition: background .12s;
+}
+.hamburger-btn svg rect { fill: currentColor; }
+.hamburger-btn:hover { background: var(--active-bg); }
+.mobile-header-title { display: none; font-size: 14px; font-weight: 600; }
+.menu-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.32);
+  opacity: 0; pointer-events: none; transition: opacity .22s; z-index: 40;
+}
+.menu-backdrop.open { opacity: 1; pointer-events: auto; }
+.side-menu {
+  position: fixed; top: 0; bottom: 0; right: 0; width: min(78vw, 300px);
+  background: #fff; box-shadow: -6px 0 24px rgba(0,0,0,.16);
+  transform: translateX(100%); transition: transform .26s cubic-bezier(.25,.8,.25,1);
+  z-index: 41; display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+}
+.side-menu.open { transform: translateX(0); }
+.side-menu-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px 14px; border-bottom: 1px solid var(--rule); flex-shrink: 0;
+}
+.side-menu-title { font-size: 15px; font-weight: 700; letter-spacing: .02em; }
+.side-menu-close {
+  width: 30px; height: 30px; border-radius: 50%; border: none; background: transparent;
+  color: var(--mid); font-size: 20px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all .12s;
+}
+.side-menu-close:hover { background: var(--active-bg); color: var(--black); }
+.side-menu-items { display: flex; flex-direction: column; padding: 8px 0; overflow-y: auto; }
+.side-menu-item {
+  padding: 14px 20px; font-size: 15px; font-weight: 500; color: var(--black);
+  cursor: pointer; border-right: 3px solid transparent; text-align: right;
+  transition: background .12s, border-color .12s;
+}
+.side-menu-item.active { border-right-color: var(--black); background: var(--active-bg); font-weight: 700; }
+.side-menu-item:hover:not(.active) { background: var(--active-bg); }
+
 /* ── GLOBAL LANGUAGE SWITCH ── */
 .lang-switch { display: flex; align-items: center; gap: 6px; direction: ltr; }
 .lang-switch-btn {
@@ -365,13 +407,14 @@ body.lang-en .vocab-row-he { direction: ltr; }
 
 /* ══════════════════════════ MOBILE (≤720px) ══════════════════════════ */
 @media (max-width: 720px) {
-  /* — header: stop the grid's phantom symmetric columns from clipping tabs — */
-  .header { display: flex; padding: 0 10px; gap: 8px; }
+  /* — header: swap the tab row for a hamburger + centered title, so Vocab/Verbs/About live in
+     the side menu instead of competing with the language switch for a narrow header — */
+  .header { display: flex; align-items: center; padding: 0 6px; gap: 4px; }
   .header > .header-side:last-child { display: none; }
   .header-side { flex-shrink: 0; }
-  .tabs { flex: 1 1 auto; justify-content: flex-start; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .tabs::-webkit-scrollbar { display: none; }
-  .tab { font-size: 12px; padding: 0 9px; white-space: nowrap; }
+  .tabs { display: none; }
+  .hamburger-btn { display: flex; }
+  .mobile-header-title { display: block; flex: 1 1 auto; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .lang-switch-btn { font-size: 11px; padding: 4px 8px; }
 
   /* — reader column: reclaim width, tighten spacing — */

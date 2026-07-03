@@ -10,6 +10,10 @@
 
 <!-- HEADER -->
 <header class="header">
+  <button class="hamburger-btn" id="hamburger-btn" onclick="openMenu()" aria-label="Menu">
+    <svg width="19" height="14" viewBox="0 0 19 14"><rect width="19" height="2"/><rect y="6" width="19" height="2"/><rect y="12" width="19" height="2"/></svg>
+  </button>
+  <span class="mobile-header-title" id="mobile-header-title">Reader</span>
   <div class="header-side">
     <div class="lang-switch" id="lang-switch">
       <button class="lang-switch-btn" data-lang="he" onclick="setAppLang('he')">עברית</button>
@@ -24,6 +28,21 @@
   </nav>
   <div class="header-side" aria-hidden="true"></div>
 </header>
+
+<!-- MOBILE SIDE MENU (hamburger drawer) -->
+<div class="menu-backdrop" id="menu-backdrop" onclick="closeMenu()"></div>
+<nav class="side-menu" id="side-menu">
+  <div class="side-menu-header">
+    <span class="side-menu-title">Arabic Lab</span>
+    <button class="side-menu-close" onclick="closeMenu()" aria-label="Close menu">&times;</button>
+  </div>
+  <div class="side-menu-items">
+    <div class="side-menu-item active" id="menu-tab-reader" onclick="selectMenuTab('reader')">Reader</div>
+    <div class="side-menu-item" id="menu-tab-vocab" onclick="selectMenuTab('vocab')">Vocab</div>
+    <div class="side-menu-item" id="menu-tab-verbs" onclick="selectMenuTab('verbs')">Verbs</div>
+    <div class="side-menu-item" id="menu-tab-about" onclick="selectMenuTab('about')">About</div>
+  </div>
+</nav>
 
 <!-- READER VIEW -->
 <div class="view active" id="view-reader">
