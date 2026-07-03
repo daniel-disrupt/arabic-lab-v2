@@ -300,6 +300,8 @@ function initTrayGestures() {
   handle.addEventListener('touchcancel', () => {
     dragging = false; tray.style.transition = ''; tray.style.transform = '';
   });
+  // A plain tap on the handle (no drag) also closes the tray — not everyone will think to swipe.
+  handle.addEventListener('click', closeTray);
 }
 
 function wordAtPoint(x, y) {

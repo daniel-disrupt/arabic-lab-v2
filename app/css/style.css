@@ -90,13 +90,6 @@ body.lang-en .lesson-intro { direction: ltr; }
 .tray { height: 0; overflow: hidden; border-top: 0px solid var(--rule); transition: height .22s cubic-bezier(.25,.8,.25,1), border-top-width .22s; display: flex; align-items: stretch; }
 .tray.open { height: var(--tray-h); border-top-width: 1px; }
 .tray-handle-row { display: none; }
-.tray-close {
-  position: absolute; inset-inline-end: 8px; top: 4px; width: 28px; height: 28px;
-  border-radius: 50%; border: none; background: transparent; color: var(--mid);
-  font-size: 20px; line-height: 1; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; transition: all .12s;
-}
-.tray-close:hover { background: var(--active-bg); color: var(--black); }
 .tray-content { flex: 1; display: flex; align-items: center; padding: 0 28px; gap: 28px; min-width: 0; }
 .tray-arabic { font-family: 'Traditional Arabic','Arabic Typesetting','Scheherazade New',serif; font-size: 30px; line-height: 1.4; direction: rtl; min-width: 100px; max-width: 200px; text-align: right; flex-shrink: 0; }
 .tray-arabic.phrase { font-size: 18px; line-height: 1.65; min-width: 130px; }
@@ -385,9 +378,9 @@ body.lang-en .vocab-row-he { direction: ltr; }
     z-index: 20;
   }
   .tray.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
-  .tray-handle-row { display: flex; align-items: center; justify-content: center; position: relative; padding: 9px 12px 0; flex-shrink: 0; touch-action: none; }
-  .tray-handle-bar { width: 36px; height: 4px; border-radius: 2px; background: var(--rule); }
-  .tray-close { top: 5px; }
+  .tray-handle-row { display: flex; align-items: center; justify-content: center; position: relative; padding: 12px 12px 8px; flex-shrink: 0; touch-action: none; cursor: pointer; }
+  .tray-handle-bar { width: 36px; height: 4px; border-radius: 2px; background: var(--rule); transition: background .12s; }
+  .tray-handle-row:hover .tray-handle-bar { background: var(--mid); }
   .tray-content { flex-direction: column; align-items: stretch; padding: 10px 18px 6px; gap: 8px; }
   .tray-arabic, .tray-arabic.phrase { max-width: none; min-width: 0; }
   .tray-divider { width: 100%; height: 1px; margin: 2px 0; align-self: stretch; }
