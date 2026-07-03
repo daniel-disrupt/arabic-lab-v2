@@ -460,13 +460,24 @@ body.lang-en .vocab-row-he { direction: ltr; }
   .en-chip { padding: 6px 10px; }
   .text-size-btn { width: 32px; height: 32px; }
 
-  /* — verbs view: stack the pill list above the card instead of a fixed 620px side column — */
+  /* — verbs view: the pill list fills the width in two columns; tapping a verb opens its
+     conjugation card as a bottom-sheet drawer over the list, same as the reader's translation
+     tray, instead of scrolling an inline panel into view — */
   .verbs-inner { padding: 24px 14px 40px; }
   .verbs-layout { flex-direction: column; gap: 20px; }
   .verb-pills { width: 100%; max-height: none; overflow-y: visible; position: static; }
-  .verb-pills + .verb-card { flex: none; width: 100%; }
-  .verb-pill-row { grid-template-columns: 1fr; }
-  .verb-card-head { padding: 16px 16px 14px; flex-wrap: wrap; gap: 12px; }
+  .verb-pill-row { grid-template-columns: repeat(2, 1fr); }
+  #verb-card {
+    position: fixed; left: 0; right: 0; bottom: 0; width: auto; z-index: 20;
+    max-height: min(70vh, 560px); overflow-y: auto; -webkit-overflow-scrolling: touch;
+    border: none; border-radius: 14px 14px 0 0; background: #fff;
+    box-shadow: 0 -6px 20px rgba(0,0,0,.14);
+    padding-bottom: env(safe-area-inset-bottom);
+    transform: translateY(14px); opacity: 0; pointer-events: none;
+    transition: transform .24s cubic-bezier(.25,.8,.25,1), opacity .2s;
+  }
+  #verb-card.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
+  .verb-card-head { padding: 4px 16px 14px; flex-wrap: wrap; gap: 12px; }
   .verb-ar-main { font-size: 30px; }
   .verb-derived, .verb-conj { padding: 14px 16px; }
   .derived-row { gap: 16px; }

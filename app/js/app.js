@@ -298,58 +298,61 @@ function buildReader() {
   document.addEventListener('touchmove', onTouchMove, { passive: false });
   document.addEventListener('touchend', onTouchEnd);
   document.addEventListener('touchcancel', onTouchCancel);
-  document.getElementById('scroll-area').addEventListener('mousedown', (e) => {
-    if (!e.target.classList.contains('word')) { clearSelection(); closeTray(); }
-  });
-  // Touch equivalent of the mousedown handler above. A plain mousedown listener never fires
-  // reliably from touch: any tiny finger jitter during a tap starts a scroll gesture, and once
-  // that happens the browser suppresses the synthetic mouse events it would otherwise dispatch
-  // after touchend — so taps meant to dismiss the tray were silently swallowed. Tracking touch
-  // start/end directly and only treating it as a tap when movement stays under the same
-  // long-press-drag threshold used elsewhere fixes that without misfiring on scroll swipes.
-  let outsideTouchStartX = 0, outsideTouchStartY = 0, outsideTouchStartTarget = null, outsideTouchTracking = false;
-  const scrollAreaEl = document.getElementById('scroll-area');
-  scrollAreaEl.addEventListener('touchstart', (e) => {
-    const t = e.touches[0];
-    outsideTouchStartX = t.clientX; outsideTouchStartY = t.clientY;
-    outsideTouchStartTarget = e.target; outsideTouchTracking = true;
-  }, { passive: true });
-  scrollAreaEl.addEventListener('touchend', (e) => {
-    if (!outsideTouchTracking) return;
-    outsideTouchTracking = false;
-    const t = e.changedTouches[0];
-    const dx = Math.abs(t.clientX - outsideTouchStartX), dy = Math.abs(t.clientY - outsideTouchStartY);
-    if (dx > TOUCH_MOVE_THRESHOLD || dy > TOUCH_MOVE_THRESHOLD) return; // was a scroll, not a tap
-    if (!outsideTouchStartTarget.closest('.word')) { clearSelection(); closeTray(); }
-  });
+  initOutsideTapClose('scroll-area', (target) => !target.closest('.word'), () => { clearSelection(); closeTray(); });
 }
 
-/* ─────────────── MOBILE TRAY: swipe-down-to-close via the drag handle ─────────────── */
-function initTrayGestures() {
-  const handle = document.getElementById('tray-handle');
-  const tray = document.getElementById('tray');
+/* ─────────────── MOBILE BOTTOM-SHEET DRAWERS: shared gesture helpers ─────────────── */
+// Backs both the reader's translation tray and the verbs page's conjugation drawer — a plain
+// mousedown-only outside-tap listener never fires reliably from touch: any tiny finger jitter
+// during a tap starts a scroll gesture, and once that happens the browser suppresses the
+// synthetic mouse events it would otherwise dispatch after touchend. Tracking touch start/end
+// directly and only treating it as a tap when movement stays under a small threshold fixes that
+// without misfiring on scroll swipes.
+function initOutsideTapClose(containerId, isOutside, onClose) {
+  const el = document.getElementById(containerId);
+  el.addEventListener('mousedown', (e) => { if (isOutside(e.target)) onClose(); });
+  let startX = 0, startY = 0, startTarget = null, tracking = false;
+  el.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY; startTarget = e.target; tracking = true;
+  }, { passive: true });
+  el.addEventListener('touchend', (e) => {
+    if (!tracking) return;
+    tracking = false;
+    const t = e.changedTouches[0];
+    const dx = Math.abs(t.clientX - startX), dy = Math.abs(t.clientY - startY);
+    if (dx > TOUCH_MOVE_THRESHOLD || dy > TOUCH_MOVE_THRESHOLD) return; // was a scroll, not a tap
+    if (isOutside(startTarget)) onClose();
+  });
+}
+// Swipe-down-to-close (or a plain tap) on a drawer's drag handle. Re-bindable, since the verb
+// drawer's handle is recreated from scratch on every renderVerbsView() call.
+function initSwipeToClose(handle, panel, onClose) {
   let startY = null, dragging = false;
   handle.addEventListener('touchstart', (e) => {
     startY = e.touches[0].clientY; dragging = true;
-    tray.style.transition = 'none';
+    panel.style.transition = 'none';
   }, { passive: true });
   handle.addEventListener('touchmove', (e) => {
     if (!dragging) return;
     const dy = e.touches[0].clientY - startY;
-    if (dy > 0) { tray.style.transform = 'translateY(' + dy + 'px)'; e.preventDefault(); }
+    if (dy > 0) { panel.style.transform = 'translateY(' + dy + 'px)'; e.preventDefault(); }
   }, { passive: false });
   handle.addEventListener('touchend', (e) => {
     if (!dragging) return;
     dragging = false;
     const dy = e.changedTouches[0].clientY - startY;
-    tray.style.transition = ''; tray.style.transform = '';
-    if (dy > 60) closeTray();
+    panel.style.transition = ''; panel.style.transform = '';
+    if (dy > 60) onClose();
   });
   handle.addEventListener('touchcancel', () => {
-    dragging = false; tray.style.transition = ''; tray.style.transform = '';
+    dragging = false; panel.style.transition = ''; panel.style.transform = '';
   });
-  // A plain tap on the handle (no drag) also closes the tray — not everyone will think to swipe.
-  handle.addEventListener('click', closeTray);
+  // A plain tap on the handle (no drag) also closes the drawer — not everyone will think to swipe.
+  handle.addEventListener('click', onClose);
+}
+function initTrayGestures() {
+  initSwipeToClose(document.getElementById('tray-handle'), document.getElementById('tray'), closeTray);
 }
 
 function wordAtPoint(x, y) {
@@ -644,9 +647,7 @@ function renderVerbsView() {
       btn.innerHTML = '<span class="verb-pill-ar">'+v.arDisplay+'</span><span class="verb-pill-root">'+(v.root||'')+'</span>';
       btn.onclick = () => {
         activeVerbId=v.id; activeConjTab='present'; renderVerbsView();
-        if (window.matchMedia('(max-width:720px)').matches) {
-          document.getElementById('verb-card').scrollIntoView({ behavior:'smooth', block:'start' });
-        }
+        if (window.matchMedia('(max-width:720px)').matches) openVerbDrawer();
       };
       row.appendChild(btn);
     });
@@ -742,6 +743,9 @@ function renderVerbsView() {
     ` : `<div style="font-size:13px;color:var(--mid);${isEn?'':'direction:rtl'}">${isEn ? 'No conjugations saved yet for this verb — pending edit' : 'אין עדיין נטיות שמורות לפועל זה — ממתין לעריכה'}</div>`;
 
   card.innerHTML = `
+    <div class="tray-handle-row" id="verb-card-handle">
+      <div class="tray-handle-bar"></div>
+    </div>
     <div class="verb-card-head">
       <div class="verb-card-ar">
         <div class="verb-ar-main">${verb.ar}</div>
@@ -756,7 +760,12 @@ function renderVerbsView() {
     ${derivedHtml}
     <div class="verb-conj">${conjHtml}</div>
   `;
+  // The handle above is rebuilt from scratch on every render, so its swipe/tap-to-close
+  // listeners need rebinding each time too.
+  initSwipeToClose(document.getElementById('verb-card-handle'), card, closeVerbDrawer);
 }
+function openVerbDrawer() { document.getElementById('verb-card').classList.add('open'); }
+function closeVerbDrawer() { document.getElementById('verb-card').classList.remove('open'); }
 
 function setConjTab(tab) { activeConjTab=tab; renderVerbsView(); }
 
@@ -938,5 +947,6 @@ function renderAboutView() {
 buildReader();
 initTrayGestures();
 applyReaderScale();
+initOutsideTapClose('verbs-scroll', (target) => !target.closest('.verb-pill') && !target.closest('.verb-card'), closeVerbDrawer);
 renderVerbsView();
 applyAppLang();
