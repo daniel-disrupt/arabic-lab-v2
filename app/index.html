@@ -13,7 +13,7 @@
   <button class="hamburger-btn" id="hamburger-btn" onclick="openMenu()" aria-label="Menu">
     <svg width="19" height="14" viewBox="0 0 19 14"><rect width="19" height="2"/><rect y="6" width="19" height="2"/><rect y="12" width="19" height="2"/></svg>
   </button>
-  <span class="mobile-header-title" id="mobile-header-title">Reader</span>
+  <span class="mobile-header-title" id="mobile-header-title">Watch</span>
   <div class="header-side">
     <div class="lang-switch" id="lang-switch">
       <button class="lang-switch-btn" data-lang="he" onclick="setAppLang('he')">עברית</button>
@@ -21,8 +21,8 @@
     </div>
   </div>
   <nav class="tabs">
-    <div class="tab" id="tab-watch" onclick="switchTab('watch')">Watch</div>
-    <div class="tab active" id="tab-reader" onclick="switchTab('reader')">Reader</div>
+    <div class="tab active" id="tab-watch" onclick="switchTab('watch')">Watch</div>
+    <div class="tab" id="tab-reader" onclick="switchTab('reader')">Reader</div>
     <div class="tab" id="tab-vocab" onclick="switchTab('vocab')">Vocab</div>
     <div class="tab" id="tab-verbs" onclick="switchTab('verbs')">Verbs</div>
     <div class="tab" id="tab-about" onclick="switchTab('about')">About</div>
@@ -38,8 +38,8 @@
     <button class="side-menu-close" onclick="closeMenu()" aria-label="Close menu">&times;</button>
   </div>
   <div class="side-menu-items">
-    <div class="side-menu-item" id="menu-tab-watch" onclick="selectMenuTab('watch')">Watch</div>
-    <div class="side-menu-item active" id="menu-tab-reader" onclick="selectMenuTab('reader')">Reader</div>
+    <div class="side-menu-item active" id="menu-tab-watch" onclick="selectMenuTab('watch')">Watch</div>
+    <div class="side-menu-item" id="menu-tab-reader" onclick="selectMenuTab('reader')">Reader</div>
     <div class="side-menu-item" id="menu-tab-vocab" onclick="selectMenuTab('vocab')">Vocab</div>
     <div class="side-menu-item" id="menu-tab-verbs" onclick="selectMenuTab('verbs')">Verbs</div>
     <div class="side-menu-item" id="menu-tab-about" onclick="selectMenuTab('about')">About</div>
@@ -47,7 +47,7 @@
 </nav>
 
 <!-- READER VIEW -->
-<div class="view active" id="view-reader">
+<div class="view" id="view-reader">
   <div class="scroll-area" id="scroll-area">
     <main class="reader" id="reader">
       <div class="lesson-head">
@@ -160,7 +160,7 @@
 </div>
 
 <!-- WATCH VIEW -->
-<div class="view" id="view-watch">
+<div class="view active" id="view-watch">
   <div class="watch-scroll">
     <div class="watch-wrap">
       <div class="watch-head">
@@ -168,33 +168,27 @@
         <p class="watch-intro" id="watch-intro">The original video of the speech, trimmed to cut an unrelated screen-recording moment at the start and the closing remarks in Hebrew at the end. Follow the transcript alongside — it highlights in sync with the video, and you can tap any line to jump there.</p>
       </div>
       <div class="watch-layout">
-        <video class="watch-video" id="watch-video" playsinline preload="metadata">
-          <source src="video/abed-speech.mp4" type="video/mp4">
-          <track id="watch-captions" kind="subtitles" src="video/captions-ar.vtt" srclang="ar" label="العربية">
-        </video>
-        <div class="watch-transcript" id="watch-transcript"></div>
+        <div class="watch-video-wrap">
+          <video class="watch-video" id="watch-video" playsinline preload="metadata">
+            <source src="video/abed-speech.mp4" type="video/mp4">
+            <track id="watch-captions" kind="subtitles" src="video/captions-ar.vtt" srclang="ar" label="العربية">
+          </video>
+          <div class="watch-mobile-captions" id="watch-mobile-captions">
+            <div class="watch-mobile-cap-ar" id="watch-mobile-cap-ar"></div>
+            <div class="watch-mobile-cap-tr" id="watch-mobile-cap-tr"></div>
+          </div>
+        </div>
+        <div class="watch-transcript" id="watch-transcript-ar"></div>
+        <div class="watch-transcript watch-transcript-tr-panel" id="watch-transcript-tr"></div>
       </div>
     </div>
   </div>
   <div class="watch-bottom">
-    <div class="tray" id="watch-tray">
-      <div class="tray-handle-row" id="watch-tray-handle">
-        <div class="tray-handle-bar"></div>
-      </div>
-      <div class="tray-content">
-        <div class="tray-arabic" id="watch-tray-ar"></div>
-        <div class="tray-divider"></div>
-        <div class="tray-gloss">
-          <div class="gloss-he" id="watch-tray-he"></div>
-          <div class="tray-meta-row" id="watch-tray-meta"></div>
-          <div class="gloss-en-wrap" id="watch-gloss-en-wrap">
-            <button class="en-chip" id="watch-en-chip" onclick="toggleWatchEn(event)">EN &rsaquo;</button>
-            <span class="gloss-en hidden" id="watch-tray-en"></span>
-          </div>
-        </div>
-      </div>
-      <div class="tray-actions">
-        <button class="save-btn" id="watch-save-btn" onclick="handleWatchSave(event)">Save word</button>
+    <div class="audio-toggle-row">
+      <div class="text-size-ctrl" id="watch-text-size-ctrl">
+        <button class="text-size-btn" id="watch-text-size-dec" onclick="adjustWatchScale(-1)" aria-label="Decrease text size">A&#8315;</button>
+        <span class="text-size-label" id="watch-text-size-label">100%</span>
+        <button class="text-size-btn" id="watch-text-size-inc" onclick="adjustWatchScale(1)" aria-label="Increase text size">A&#8314;</button>
       </div>
     </div>
     <div class="audio-bar" id="watch-toolbar">
@@ -211,6 +205,14 @@
           <path d="M1 5H3.5L7 2V12L3.5 9H1V5Z" fill="currentColor"/>
           <path d="M10 4.5C11 5.5 11 8.5 10 9.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
         </svg>
+      </button>
+      <button class="mute-btn" id="watch-theater-btn" onclick="toggleWatchTheater()" title="Expand">
+        <svg id="watch-theater-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 5V1H5"/><path d="M13 5V1H9"/><path d="M1 9V13H5"/><path d="M13 9V13H9"/>
+        </svg>
+      </button>
+      <button class="mute-btn watch-tr-toggle-btn active" id="watch-tr-toggle-btn" onclick="toggleWatchTranslationVisible()" title="Hide translation">
+        <span aria-hidden="true">HE/EN</span>
       </button>
     </div>
   </div>

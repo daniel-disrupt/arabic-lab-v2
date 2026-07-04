@@ -35,6 +35,37 @@ function adjustReaderScale(dir) {
   applyReaderScale();
 }
 
+/* ─────────────── WATCH TEXT SIZE ─────────────── */
+// Same in-app scaling approach as the Reader, applied to the transcript panel instead --
+// separate scale/localStorage key since users may want the two sized differently.
+const WATCH_FONT_SCALES = [0.85, 1, 1.15, 1.3, 1.45, 1.6, 1.8, 2];
+let watchScaleIdx = WATCH_FONT_SCALES.indexOf(parseFloat(localStorage.getItem('arabicLabWatchScale')));
+if (watchScaleIdx < 0) watchScaleIdx = WATCH_FONT_SCALES.indexOf(1);
+function applyWatchScale() {
+  const scale = WATCH_FONT_SCALES[watchScaleIdx];
+  document.documentElement.style.setProperty('--watch-scale', scale);
+  document.getElementById('watch-text-size-label').textContent = Math.round(scale * 100) + '%';
+  document.getElementById('watch-text-size-dec').disabled = watchScaleIdx === 0;
+  document.getElementById('watch-text-size-inc').disabled = watchScaleIdx === WATCH_FONT_SCALES.length - 1;
+  localStorage.setItem('arabicLabWatchScale', String(scale));
+}
+function adjustWatchScale(dir) {
+  watchScaleIdx = Math.min(WATCH_FONT_SCALES.length - 1, Math.max(0, watchScaleIdx + dir));
+  applyWatchScale();
+  // .watch-cue-ar/.watch-cue-tr transition font-size over .15s -- wait for that to finish before
+  // re-measuring natural heights, or the sync would lock in a mid-transition (wrong) height.
+  setTimeout(() => {
+    syncWatchCueHeights();
+    // Every cue above the active one just changed height, so the old scroll position no longer
+    // lines the two columns up the way it did a moment ago -- snap the active cue to the top of
+    // both panels so they visibly reset back into alignment instead of drifting.
+    if (activeWatchCueIdx >= 0) {
+      watchArCueEls[activeWatchCueIdx].scrollIntoView({ behavior: 'auto', block: 'start' });
+      watchTrCueEls[activeWatchCueIdx].scrollIntoView({ behavior: 'auto', block: 'start' });
+    }
+  }, 180);
+}
+
 /* ─────────────── LANGUAGE PREFERENCE (global, top-bar) ─────────────── */
 // 'he' = Hebrew-primary with full grammatical scaffolding (בניין, שורש badges, Hebrew
 // conjugation column) — English still reachable per word/phrase via the EN chip.
@@ -49,8 +80,8 @@ const TAB_LABELS = {
 };
 const WATCH_LABELS = { en: 'Watch the full speech', he: 'צפייה בנאום המלא' };
 const WATCH_INTRO = {
-  en: "The original video of the speech, trimmed to cut an unrelated screen-recording moment at the start and the closing remarks in Hebrew at the end. Follow the transcript alongside — it highlights in sync with the video, and you can tap any line to jump there.",
-  he: 'הסרטון המקורי של הנאום, נחתך כדי להסיר רגע לא רלוונטי של הקלטת מסך בהתחלה ואת דברי הסיום בעברית בסוף. עקבו אחרי התמליל בצד — הוא מודגש בסנכרון עם הסרטון, ואפשר ללחוץ על כל שורה כדי לקפוץ לרגע הזה.',
+  en: "The original video of the speech, trimmed to cut an unrelated screen-recording moment at the start and the closing remarks in Hebrew at the end. A running translation plays alongside the Arabic transcript so you can watch straight through — tap any line to jump there. For word-by-word study, open the Reader tab instead.",
+  he: 'הסרטון המקורי של הנאום, נחתך כדי להסיר רגע לא רלוונטי של הקלטת מסך בהתחלה ואת דברי הסיום בעברית בסוף. תרגום רץ מופיע לצד התמליל בערבית כדי לאפשר צפייה רציפה — אפשר ללחוץ על כל שורה כדי לקפוץ לרגע הזה. ללימוד מילה-במילה, אפשר לפתוח את לשונית הקורא.',
 };
 const INTRO_CONTENT = {
   en: {
@@ -89,7 +120,8 @@ const STRINGS = {
     audioToggleTitle: 'Turn off to read without the player driving audio',
     muteAudio: 'Mute audio', unmuteAudio: 'Unmute audio',
     jumpToAudio: 'Jump to this part of the audio',
-    noTranslationYet: 'No translation yet',
+    enterTheater: 'Expand', exitTheater: 'Exit expanded view',
+    hideTranslation: 'Hide translation', showTranslation: 'Show translation',
   },
   he: {
     vocabTitle: 'אוצר מילים שמור',
@@ -112,7 +144,8 @@ const STRINGS = {
     audioToggleTitle: 'כבו כדי לקרוא בלי שהנגן ינהל את השמע',
     muteAudio: 'השתק שמע', unmuteAudio: 'בטל השתקה',
     jumpToAudio: 'קפצו לחלק הזה בהקלטה',
-    noTranslationYet: 'עדיין אין תרגום',
+    enterTheater: 'הרחבה', exitTheater: 'יציאה מתצוגה מורחבת',
+    hideTranslation: 'הסתר תרגום', showTranslation: 'הצג תרגום',
   },
 };
 function t(key) { return STRINGS[appLang][key]; }
@@ -160,9 +193,10 @@ function applyAppLang() {
   document.getElementById('audio-toggle-btn').textContent = audioModeOn ? t('audioOn') : t('audioOff');
   document.getElementById('audio-toggle-btn').title = t('audioToggleTitle');
   document.getElementById('mute-btn').title = audioEl.muted ? t('unmuteAudio') : t('muteAudio');
+  updateWatchTheaterIcon();
   document.querySelectorAll('.chunk-time').forEach(el => el.title = t('jumpToAudio'));
   if (document.getElementById('tray').classList.contains('open')) closeTray(); // avoid a stale mixed-language tray after switching mid-selection (header-gloss trays have no currentSelectionCtx)
-  if (document.getElementById('watch-tray').classList.contains('open')) closeWatchTray();
+  applyWatchTranslationLang();
   renderVocabView();
   renderVerbsView();
   if (document.getElementById('view-about').classList.contains('active')) renderAboutView();
@@ -211,9 +245,9 @@ function toggleVerbGroup(key) {
 }
 
 /* ─────────────── TAB SWITCHING ─────────────── */
-// The Reader tab opens by default; on mobile, Vocab/Verbs/About live behind the hamburger drawer
-// instead of a tab row, since there wasn't room for both that and the language switch.
-let activeTabName = 'reader';
+// The Watch tab opens by default; on mobile, Reader/Vocab/Verbs/About live behind the hamburger
+// drawer instead of a tab row, since there wasn't room for both that and the language switch.
+let activeTabName = 'watch';
 function switchTab(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -311,7 +345,7 @@ function buildReader() {
   document.addEventListener('touchmove', onTouchMove, { passive: false });
   document.addEventListener('touchend', onTouchEnd);
   document.addEventListener('touchcancel', onTouchCancel);
-  initOutsideTapClose('scroll-area', (target) => !target.closest('.word'), () => { clearSelection(); closeTray(); });
+  initOutsideTapClose(document.body, (target) => !target.closest('.word') && !target.closest('#tray'), () => { clearSelection(); closeTray(); });
 }
 
 /* ─────────────── MOBILE BOTTOM-SHEET DRAWERS: shared gesture helpers ─────────────── */
@@ -321,8 +355,8 @@ function buildReader() {
 // synthetic mouse events it would otherwise dispatch after touchend. Tracking touch start/end
 // directly and only treating it as a tap when movement stays under a small threshold fixes that
 // without misfiring on scroll swipes.
-function initOutsideTapClose(containerId, isOutside, onClose) {
-  const el = document.getElementById(containerId);
+function initOutsideTapClose(container, isOutside, onClose) {
+  const el = typeof container === 'string' ? document.getElementById(container) : container;
   el.addEventListener('mousedown', (e) => { if (isOutside(e.target)) onClose(); });
   let startX = 0, startY = 0, startTarget = null, tracking = false;
   el.addEventListener('touchstart', (e) => {
@@ -849,10 +883,7 @@ function renderVocabView() {
   visible.sort((a, b) => {
     if (vocabSort === 'alpha') return a.v.ar.localeCompare(b.v.ar, 'ar');
     if (vocabSort === 'recent') return a.i - b.i;
-    // "Order in speech" only has a coherent meaning within one source (Reader's CHUNKS vs Watch's
-    // WATCH_CAPTIONS are different timelines/indices) -- group by source first, then by ci within it.
-    const aSrc = a.v.source === 'watch' ? 1 : 0, bSrc = b.v.source === 'watch' ? 1 : 0;
-    return (aSrc - bSrc) || (a.v.ci - b.v.ci) || (a.i - b.i);
+    return (a.v.ci - b.v.ci) || (a.i - b.i); // order in speech
   });
 
   document.getElementById('vocab-count').textContent = visible.length === SAVED_VOCAB.length ? t('vocabItemsCount')(visible.length) : t('vocabCountOf')(visible.length, SAVED_VOCAB.length);
@@ -865,9 +896,8 @@ function renderVocabView() {
   list.innerHTML = visible.map(({ v, i }) => {
     const meta = v.type === 'phrase' ? phraseTypeBadgeHtml(v.phraseType) : rootMetaHtml(v.root, !!v.sharedRoot);
     const isOpen = expandedVocab.has(i);
-    const isWatch = v.source === 'watch';
-    const chunkLabel = isWatch ? fmtTime(WATCH_CAPTIONS[v.ci].start) + ' – ' + fmtTime(WATCH_CAPTIONS[v.ci].end) : CHUNKS[v.ci].label;
-    const primary = v.he == null ? t('noTranslationYet') : (appLang === 'en' ? (v.en || '') : v.he);
+    const chunk = CHUNKS[v.ci];
+    const primary = appLang === 'en' ? (v.en||'') : v.he;
     const enWrapHtml = appLang === 'en' ? '' : `
           <div class="vocab-row-en-wrap">
             <button class="en-chip" onclick="toggleVocabEn(event, ${i})">EN &rsaquo;</button>
@@ -889,8 +919,8 @@ function renderVocabView() {
         </div>
         <div class="vocab-expand${isOpen?' open':''}">
           <div class="vocab-expand-inner">
-            <div class="vocab-expand-time">${chunkLabel}</div>
-            <p class="vocab-expand-text">${isWatch ? renderWatchChunkPreview(v.ci, v.ar) : renderChunkPreview(v.ci, v.ar)}</p>
+            <div class="vocab-expand-time">${chunk.label}</div>
+            <p class="vocab-expand-text">${renderChunkPreview(v.ci, v.ar)}</p>
           </div>
         </div>
       </div>
@@ -940,21 +970,6 @@ function renderChunkPreview(ci, targetAr) {
     return isMatch ? '<mark class="chunk-preview-hl">'+text+'</mark>' : text;
   }).join(' ');
 }
-function renderWatchChunkPreview(ci, targetAr) {
-  const tokens = WATCH_CAPTIONS[ci].words;
-  const targetWords = targetAr.split(' ').filter(Boolean);
-  let matchStart = -1;
-  for (let i = 0; i <= tokens.length - targetWords.length; i++) {
-    let ok = true;
-    for (let j = 0; j < targetWords.length; j++) { if (tokens[i+j].w !== targetWords[j]) { ok = false; break; } }
-    if (ok) { matchStart = i; break; }
-  }
-  return tokens.map((tok, i) => {
-    const isMatch = matchStart >= 0 && i >= matchStart && i < matchStart + targetWords.length;
-    return isMatch ? '<mark class="chunk-preview-hl">'+tok.w+'</mark>' : tok.w;
-  }).join(' ');
-}
-
 function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
 
 /* ─────────────── ABOUT VIEW (follows the global HE/EN language preference) ─────────────── */
@@ -1008,45 +1023,53 @@ function renderAboutView() {
 
 /* ─────────────── WATCH TAB ─────────────── */
 // Native <track> stays on the <video> for accessibility (CC toggle, screen readers), but the
-// primary caption UX is this external synced transcript panel — a burned-in overlay on a small
-// portrait video read poorly, and a full scrollable transcript matches the Reader tab's existing
-// active-line-highlight pattern better anyway.
-// Karaoke (per-word) highlighting is layered on top of the cue-level highlight, same pairing as
-// the AI voiceover — reliable here (86.7%, see watch-captions-data.js) because both the segment
-// text and the word timestamps come from transcribing the same raw speech, unlike the Reader's
-// cleaned-text alignment attempt.
-let watchCueEls = [];
+// primary caption UX is this external synced transcript panel. Each cue pairs its Arabic line
+// with a running he/en translation right below it (not tap-to-translate like the Reader) --
+// the goal here is watching the speech straight through; anyone who wants word-level study can
+// open the Reader instead.
+// Karaoke (per-word) highlighting on the Arabic line is layered on top of the cue-level
+// highlight, same pairing as the AI voiceover -- reliable here (86.7%, see
+// watch-captions-data.js) because both the segment text and the word timestamps come from
+// transcribing the same raw speech, unlike the Reader's cleaned-text alignment attempt.
+// Karaoke (per-word) highlighting on the Arabic line is layered on top of the cue-level
+// highlight, same pairing as the AI voiceover -- reliable here (86.7%, see
+// watch-captions-data.js) because both the segment text and the word timestamps come from
+// transcribing the same raw speech, unlike the Reader's cleaned-text alignment attempt.
+// The translation panel does NOT get word-level karaoke -- it's a full-sentence AI translation
+// with no real per-word correspondence to the Arabic, and an interpolated/estimated per-word
+// timing there read as distracting rather than helpful. Instead, clicking a word (or dragging
+// across a phrase) in the Arabic panel just seeks the video and lets the existing cue-level sync
+// highlight the matching line in the translation panel next to it.
+let watchArCueEls = [];
+let watchTrCueEls = [];
+let watchTrWordsByCue = []; // per cue index: array of translation word spans
 let activeWatchCueIdx = -1;
 let watchWordEls = [];
-let watchCueRanges = []; // {ci, startIdx, endIdx} mirroring Reader's chunkRanges
+let watchCueOfWordIdx = []; // parallel to watchWordEls: which cue index each word belongs to
+let watchCueWordRanges = []; // per cue: {startIdx, endIdx} into watchWordEls/watchCueOfWordIdx
 let watchTimedWords = [];
 let liveWatchWordIdx = -1;
 
-// Gloss lookup: the watch transcript is raw ASR text (different wording/tokenization than the
-// Reader's cleaned reading-edition text), so it has no gloss data of its own. Reuse whatever the
-// Reader already has via normalized exact-match lookup (~63% of word occurrences match) rather
-// than fabricate new glosses -- unmatched words still open the tray and can still be saved, just
-// with an honest "no translation yet" placeholder.
-// Range built from explicit \u escapes, not literal characters -- see the note in
-// scripts/align-voiceover-words.py and watch-captions-data.js on why.
-const WATCH_TASHKEEL = new RegExp('[ً-ٰٟۖ-ۭـ]', 'g');
-function watchNormWord(s) {
-  return s.replace(WATCH_TASHKEEL, '').replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/[.,،؛؟!:]/g, '').trim();
-}
-const WATCH_GLOSS_DICT = new Map();
-CHUNKS.forEach(c => c.text.forEach(tok => { if (tok.w && !WATCH_GLOSS_DICT.has(watchNormWord(tok.w))) WATCH_GLOSS_DICT.set(watchNormWord(tok.w), tok); }));
-function lookupWatchGloss(rawWord) { return WATCH_GLOSS_DICT.get(watchNormWord(rawWord)) || null; }
-
 function buildWatchTranscript() {
-  const panel = document.getElementById('watch-transcript');
+  const arPanel = document.getElementById('watch-transcript-ar');
+  const trPanel = document.getElementById('watch-transcript-tr');
   const video = document.getElementById('watch-video');
-  panel.innerHTML = '';
+  arPanel.innerHTML = '';
+  trPanel.innerHTML = '';
   watchWordEls = [];
-  watchCueRanges = [];
+  watchCueOfWordIdx = [];
+  watchCueWordRanges = [];
   watchTimedWords = [];
-  watchCueEls = WATCH_CAPTIONS.map((cue, ci) => {
+
+  const seekToCue = (cue) => {
+    const inThisCue = video.currentTime >= cue.start && video.currentTime < cue.end;
+    if (inThisCue) video.pause();
+    else { video.currentTime = cue.start; video.play(); }
+  };
+
+  watchArCueEls = WATCH_CAPTIONS.map((cue, ci) => {
     const div = document.createElement('div');
-    div.className = 'watch-cue';
+    div.className = 'watch-cue watch-cue-ar';
     const startIdx = watchWordEls.length;
     cue.words.forEach((wd) => {
       const span = document.createElement('span');
@@ -1057,35 +1080,177 @@ function buildWatchTranscript() {
       div.appendChild(document.createTextNode(' '));
       const wi = watchWordEls.length;
       watchWordEls.push(span);
+      watchCueOfWordIdx.push(ci);
       if (wd.t !== undefined) watchTimedWords.push({ idx: wi, t: wd.t });
     });
-    watchCueRanges.push({ ci, startIdx, endIdx: watchWordEls.length - 1 });
-    div.addEventListener('click', () => {
+    watchCueWordRanges.push({ startIdx, endIdx: watchWordEls.length - 1 });
+    div.addEventListener('click', (e) => {
       if (watchLastActionWasDrag) { watchLastActionWasDrag = false; return; }
-      const inThisCue = video.currentTime >= cue.start && video.currentTime < cue.end;
-      if (inThisCue) video.pause();
-      else { video.currentTime = cue.start; video.play(); }
+      const wordEl = e.target.closest('.watch-word');
+      if (wordEl) {
+        clearWatchSelection();
+        wordEl.classList.add('selected');
+        const gi = parseInt(wordEl.dataset.widx, 10);
+        linkWatchSelectionToTranslation(gi, gi);
+      }
+      seekToCue(cue);
     });
-    panel.appendChild(div);
+    arPanel.appendChild(div);
     return div;
   });
+
+  watchTrWordsByCue = [];
+  watchTrCueEls = WATCH_CAPTIONS.map((cue) => {
+    const div = document.createElement('div');
+    div.className = 'watch-cue watch-cue-tr';
+    const text = appLang === 'en' ? cue.en : cue.he;
+    const words = text.split(/\s+/).filter(Boolean);
+    const spans = words.map((w) => {
+      const span = document.createElement('span');
+      span.className = 'watch-word';
+      span.textContent = w;
+      div.appendChild(span);
+      div.appendChild(document.createTextNode(' '));
+      return span;
+    });
+    watchTrWordsByCue.push(spans);
+    div.addEventListener('click', () => seekToCue(cue));
+    trPanel.appendChild(div);
+    return div;
+  });
+
   watchTimedWords.sort((a, b) => a.t - b.t);
   video.addEventListener('timeupdate', () => { updateWatchActiveCue(); updateWatchLiveWord(); });
   initWatchDragSelect();
+  applyWatchTranslationVisibility();
+  syncWatchCueHeights();
 }
-function watchCiForIdx(idx) { const r = watchCueRanges.find(r => idx >= r.startIdx && idx <= r.endIdx); return r ? r.ci : 0; }
+// The Arabic and translation columns lay out independently (separate scrollable panels), so the
+// same cue can wrap to a different number of lines in each -- distractingly so once the user
+// bumps the text size, since Arabic and its English/Hebrew translation are rarely the same
+// length. Force each cue's pair of boxes to share the taller of their two natural heights,
+// re-run whenever text size or language changes since both affect wrapping.
+function syncWatchCueHeights() {
+  for (let i = 0; i < watchArCueEls.length; i++) {
+    watchArCueEls[i].style.minHeight = '';
+    watchTrCueEls[i].style.minHeight = '';
+  }
+  for (let i = 0; i < watchArCueEls.length; i++) {
+    const h = Math.max(watchArCueEls[i].offsetHeight, watchTrCueEls[i].offsetHeight);
+    watchArCueEls[i].style.minHeight = h + 'px';
+    watchTrCueEls[i].style.minHeight = h + 'px';
+  }
+}
+function applyWatchTranslationLang() {
+  watchTrHighlighted = []; // the old spans are about to be discarded
+  watchTrCueEls.forEach((el, ci) => {
+    el.innerHTML = '';
+    const text = appLang === 'en' ? WATCH_CAPTIONS[ci].en : WATCH_CAPTIONS[ci].he;
+    watchTrWordsByCue[ci] = text.split(/\s+/).filter(Boolean).map((w) => {
+      const span = document.createElement('span');
+      span.className = 'watch-word';
+      span.textContent = w;
+      el.appendChild(span);
+      el.appendChild(document.createTextNode(' '));
+      return span;
+    });
+  });
+  syncWatchCueHeights();
+  renderMobileCueOverlay(activeWatchCueIdx);
+}
 
-/* ─────────────── WATCH TAB: word tap / drag-select ─────────────── */
+/* ─────────────── WATCH TAB: mobile fullscreen overlay captions ───────────────
+   Mobile theater mode (see CSS) hides the two scrolling transcript columns and shows the video
+   near-fullscreen instead, with the active cue's Arabic (karaoke-highlighted, same word timing
+   as the desktop column) and translation burned in as an overlay ribbon -- a real subtitle-player
+   feel on a small screen, where three side-by-side columns wouldn't fit. */
+let overlayWordEls = {}; // global word idx -> overlay span, only for the currently-shown cue
+let watchTranslationVisible = true;
+function renderMobileCueOverlay(cueIdx) {
+  const arEl = document.getElementById('watch-mobile-cap-ar');
+  const trEl = document.getElementById('watch-mobile-cap-tr');
+  arEl.innerHTML = '';
+  overlayWordEls = {};
+  if (cueIdx < 0) { trEl.textContent = ''; return; }
+  const cue = WATCH_CAPTIONS[cueIdx];
+  const range = watchCueWordRanges[cueIdx];
+  for (let gi = range.startIdx; gi <= range.endIdx; gi++) {
+    const span = document.createElement('span');
+    span.className = 'watch-word';
+    span.textContent = watchWordEls[gi].textContent;
+    if (liveWatchWordIdx === gi) span.classList.add('live');
+    arEl.appendChild(span);
+    arEl.appendChild(document.createTextNode(' '));
+    overlayWordEls[gi] = span;
+  }
+  trEl.textContent = appLang === 'en' ? cue.en : cue.he;
+}
+function toggleWatchTranslationVisible() {
+  watchTranslationVisible = !watchTranslationVisible;
+  applyWatchTranslationVisibility();
+}
+function applyWatchTranslationVisibility() {
+  document.getElementById('watch-transcript-tr').classList.toggle('watch-tr-hidden', !watchTranslationVisible);
+  document.getElementById('watch-mobile-cap-tr').classList.toggle('watch-tr-hidden', !watchTranslationVisible);
+  const btn = document.getElementById('watch-tr-toggle-btn');
+  btn.classList.toggle('active', watchTranslationVisible);
+  btn.title = watchTranslationVisible ? t('hideTranslation') : t('showTranslation');
+}
+
+/* ─────────────── WATCH TAB: word click / phrase drag-select ───────────────
+   Visual-only (no translation tray, no vocab save -- that workflow lives in the Reader). A tap
+   seeks the video via the cue click handler above (word clicks bubble to it). A drag across
+   multiple words shows a phrase selection and seeks to the first word's cue on release. */
 let watchDragActive = false, watchDragStartIdx = -1, watchDragEndIdx = -1;
 let watchLastActionWasDrag = false;
-let currentWatchSelectionCtx = null;
 function watchWordAtPoint(x, y) {
   const el = document.elementFromPoint(x, y);
   return (el && el.classList.contains('watch-word')) ? parseInt(el.dataset.widx, 10) : -1;
 }
+function renderWatchRange(lo, hi) { watchWordEls.forEach((el, gi) => { el.classList.remove('selected'); el.classList.toggle('in-range', gi >= lo && gi <= hi); el.classList.toggle('range-start', gi === lo); el.classList.toggle('range-end', gi === hi); }); }
+function clearWatchSelection() { watchWordEls.forEach((el) => el.classList.remove('in-range', 'range-start', 'range-end', 'selected')); watchDragStartIdx = -1; watchDragEndIdx = -1; }
+// Highlights the SPECIFIC words in the translation that correspond to the selected Arabic
+// range -- not the whole cue block. There's no real word-level alignment between the Arabic and
+// the AI-translated sentence (different word order/count), so this maps by PROPORTIONAL
+// POSITION within the sentence (e.g. a selection starting a third of the way through the Arabic
+// cue highlights words starting a third of the way through its translation) -- an estimate, not
+// a measured correspondence, same honesty rule as the karaoke timing elsewhere in this tab.
+let watchTrHighlighted = [];
+function linkWatchSelectionToTranslation(loGlobal, hiGlobal) {
+  watchTrHighlighted.forEach((el) => el.classList.remove('tr-phrase-highlight'));
+  watchTrHighlighted = [];
+  const ci = watchCueOfWordIdx[loGlobal];
+  const range = watchCueWordRanges[ci];
+  const totalWords = range.endIdx - range.startIdx + 1;
+  const loLocal = loGlobal - range.startIdx;
+  const hiLocal = Math.min(hiGlobal, range.endIdx) - range.startIdx;
+  const trWords = watchTrWordsByCue[ci];
+  const n = trWords.length;
+  const trLo = Math.floor(loLocal / totalWords * n);
+  const trHi = Math.max(trLo, Math.ceil((hiLocal + 1) / totalWords * n) - 1);
+  for (let i = trLo; i <= Math.min(trHi, n - 1); i++) {
+    trWords[i].classList.add('tr-phrase-highlight');
+    watchTrHighlighted.push(trWords[i]);
+  }
+  watchTrCueEls[ci].scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function commitWatchDrag(lo, hi) {
+  const video = document.getElementById('watch-video');
+  const ci = watchCueOfWordIdx[lo];
+  const cue = WATCH_CAPTIONS[ci];
+  linkWatchSelectionToTranslation(lo, hi);
+  video.currentTime = cue.start; video.play();
+}
 function onWatchDragStart(e) { const i = watchWordAtPoint(e.clientX, e.clientY); if (i < 0) return; e.preventDefault(); watchDragActive = true; watchDragStartIdx = i; watchDragEndIdx = i; renderWatchRange(i, i); }
 function onWatchDragMove(e) { if (!watchDragActive) return; const i = watchWordAtPoint(e.clientX, e.clientY); if (i >= 0 && i !== watchDragEndIdx) { watchDragEndIdx = i; renderWatchRange(Math.min(watchDragStartIdx, watchDragEndIdx), Math.max(watchDragStartIdx, watchDragEndIdx)); } }
-function onWatchDragEnd() { if (!watchDragActive) return; watchDragActive = false; const lo = Math.min(watchDragStartIdx, watchDragEndIdx), hi = Math.max(watchDragStartIdx, watchDragEndIdx); watchLastActionWasDrag = lo !== hi; lo === hi ? commitWatchWord(lo) : commitWatchPhrase(lo, hi); }
+function onWatchDragEnd() {
+  if (!watchDragActive) return;
+  watchDragActive = false;
+  const lo = Math.min(watchDragStartIdx, watchDragEndIdx), hi = Math.max(watchDragStartIdx, watchDragEndIdx);
+  watchLastActionWasDrag = lo !== hi;
+  if (lo !== hi) commitWatchDrag(lo, hi);
+  else clearWatchSelection();
+}
 const WATCH_TOUCH_LONG_PRESS_MS = 350;
 const WATCH_TOUCH_MOVE_THRESHOLD = 10;
 let watchTouchTimer = null, watchTouchStartX = 0, watchTouchStartY = 0, watchTouchStartIdx = -1, watchTouchArmed = false;
@@ -1093,7 +1258,6 @@ function clearWatchTouchTimer() { if (watchTouchTimer) { clearTimeout(watchTouch
 function onWatchTouchStart(e) {
   const t = e.touches[0], i = watchWordAtPoint(t.clientX, t.clientY);
   if (i < 0) return;
-  e.preventDefault();
   watchTouchStartX = t.clientX; watchTouchStartY = t.clientY; watchTouchStartIdx = i; watchTouchArmed = false;
   clearWatchTouchTimer();
   watchTouchTimer = setTimeout(() => {
@@ -1121,10 +1285,9 @@ function onWatchTouchEnd() {
       watchDragActive = false;
       const lo = Math.min(watchDragStartIdx, watchDragEndIdx), hi = Math.max(watchDragStartIdx, watchDragEndIdx);
       watchLastActionWasDrag = lo !== hi;
-      lo === hi ? commitWatchWord(lo) : commitWatchPhrase(lo, hi);
+      if (lo !== hi) commitWatchDrag(lo, hi);
+      else clearWatchSelection();
     }
-  } else if (watchTouchStartIdx >= 0) {
-    commitWatchWord(watchTouchStartIdx);
   }
   watchTouchStartIdx = -1;
 }
@@ -1134,100 +1297,17 @@ function onWatchTouchCancel() {
   if (watchDragActive) { watchDragActive = false; clearWatchSelection(); }
 }
 function initWatchDragSelect() {
-  const panel = document.getElementById('watch-transcript');
+  const panel = document.getElementById('watch-transcript-ar');
   panel.addEventListener('mousedown', onWatchDragStart);
   document.addEventListener('mousemove', onWatchDragMove);
   document.addEventListener('mouseup', onWatchDragEnd);
-  panel.addEventListener('touchstart', onWatchTouchStart, { passive: false });
+  panel.addEventListener('touchstart', onWatchTouchStart, { passive: true });
   panel.addEventListener('touchmove', onWatchTouchMove, { passive: false });
   document.addEventListener('touchend', onWatchTouchEnd);
   document.addEventListener('touchcancel', onWatchTouchCancel);
   panel.addEventListener('contextmenu', (e) => e.preventDefault());
 }
-function renderWatchRange(lo, hi) { watchWordEls.forEach((el, gi) => { const inR = gi >= lo && gi <= hi; el.classList.toggle('in-range', inR); el.classList.toggle('range-start', gi === lo); el.classList.toggle('range-end', gi === hi); el.classList.remove('selected'); }); }
-function clearWatchSelection() { watchWordEls.forEach((el) => el.classList.remove('in-range', 'range-start', 'range-end', 'selected')); watchDragStartIdx = -1; watchDragEndIdx = -1; }
-function commitWatchWord(idx) {
-  clearWatchSelection();
-  const el = watchWordEls[idx]; el.classList.add('selected');
-  const ar = el.textContent;
-  const gloss = lookupWatchGloss(ar);
-  document.getElementById('watch-tray-ar').textContent = ar;
-  document.getElementById('watch-tray-ar').className = 'tray-arabic';
-  if (gloss) {
-    document.getElementById('watch-tray-he').textContent = appLang === 'en' ? (gloss.en || '') : gloss.he;
-    document.getElementById('watch-tray-en').textContent = gloss.en || '';
-    document.getElementById('watch-tray-meta').innerHTML = rootMetaHtml(gloss.root, !!gloss.sharedRoot);
-  } else {
-    document.getElementById('watch-tray-he').textContent = t('noTranslationYet');
-    document.getElementById('watch-tray-en').textContent = '';
-    document.getElementById('watch-tray-meta').innerHTML = '';
-  }
-  currentWatchSelectionCtx = {
-    type: 'word', ar, he: gloss ? gloss.he : null, en: gloss ? (gloss.en || '') : null,
-    root: gloss ? (gloss.root || null) : null, sharedRoot: !!(gloss && gloss.sharedRoot),
-    isVerb: !!(gloss && gloss.pos === 'verb'), source: 'watch', ci: watchCiForIdx(idx),
-  };
-  refreshWatchSaveButton();
-  resetWatchEnChip(); openWatchTray();
-}
-function commitWatchPhrase(lo, hi) {
-  watchWordEls.forEach((el, gi) => { el.classList.toggle('in-range', gi >= lo && gi <= hi); el.classList.remove('range-start', 'range-end', 'selected'); });
-  const words = watchWordEls.slice(lo, hi + 1).map(el => el.textContent);
-  const phrase = words.join(' ');
-  document.getElementById('watch-tray-ar').textContent = phrase;
-  document.getElementById('watch-tray-ar').className = 'tray-arabic phrase';
-  let gloss = null;
-  for (const pg of PHRASE_GLOSSES) { if (pg.keys.filter(k => words.includes(k)).length >= Math.min(2, pg.keys.length)) { gloss = pg; break; } }
-  const glosses = words.map(w => lookupWatchGloss(w)).filter(Boolean);
-  const fallbackHe = glosses.map(g => g.he).filter(Boolean).join(' ');
-  const fallbackEn = glosses.map(g => g.en).filter(Boolean).join(' ');
-  const heText = gloss ? gloss.he : (fallbackHe || null);
-  const enText = gloss ? gloss.en : (fallbackEn || null);
-  document.getElementById('watch-tray-he').textContent = heText ? (appLang === 'en' ? (enText || heText) : heText) : t('noTranslationYet');
-  document.getElementById('watch-tray-en').textContent = enText || '';
-  document.getElementById('watch-tray-meta').innerHTML = phraseTypeBadgeHtml(gloss ? gloss.type : null);
-  currentWatchSelectionCtx = { type: 'phrase', ar: phrase, he: heText, en: enText, phraseType: gloss ? gloss.type : null, source: 'watch', ci: watchCiForIdx(lo) };
-  refreshWatchSaveButton();
-  resetWatchEnChip(); openWatchTray();
-}
-function refreshWatchSaveButton() {
-  const btn = document.getElementById('watch-save-btn');
-  if (!currentWatchSelectionCtx) { btn.style.display = 'none'; return; }
-  btn.style.display = '';
-  const label = currentWatchSelectionCtx.type === 'phrase' ? t('savePhrase') : t('saveWord');
-  const already = SAVED_VOCAB.some(v => v.ar === currentWatchSelectionCtx.ar);
-  btn.textContent = already ? t('alreadySaved') : label;
-  btn.disabled = already;
-  btn.classList.toggle('saved', already);
-}
-function handleWatchSave(e) {
-  e.stopPropagation();
-  if (!currentWatchSelectionCtx) return;
-  if (SAVED_VOCAB.some(v => v.ar === currentWatchSelectionCtx.ar)) { refreshWatchSaveButton(); return; }
-  SAVED_VOCAB.unshift({ ...currentWatchSelectionCtx });
-  renderVocabView();
-  const ar = document.getElementById('watch-tray-ar').textContent;
-  let msg = t('savedToVocab')(ar);
-  if (currentWatchSelectionCtx.type === 'word' && currentWatchSelectionCtx.isVerb) {
-    if (addVerbToVerbsTab(currentWatchSelectionCtx)) msg += t('andVerbs');
-  }
-  showToast(msg);
-  refreshWatchSaveButton();
-}
-function openWatchTray() { document.getElementById('watch-tray').classList.add('open'); }
-function closeWatchTray() { document.getElementById('watch-tray').classList.remove('open'); clearWatchSelection(); }
-let watchEnVisible = false;
-function resetWatchEnChip() {
-  const wrap = document.getElementById('watch-gloss-en-wrap');
-  if (appLang === 'en') { wrap.style.display = 'none'; watchEnVisible = false; return; }
-  wrap.style.display = '';
-  watchEnVisible = false;
-  document.getElementById('watch-tray-en').classList.add('hidden');
-  const c = document.getElementById('watch-en-chip');
-  c.classList.remove('showing');
-  c.textContent = 'EN ›';
-}
-function toggleWatchEn(e) { e.stopPropagation(); watchEnVisible = !watchEnVisible; document.getElementById('watch-tray-en').classList.toggle('hidden', !watchEnVisible); const c = document.getElementById('watch-en-chip'); c.classList.toggle('showing', watchEnVisible); c.textContent = watchEnVisible ? 'EN ×' : 'EN ›'; }
+
 
 /* ─────────────── WATCH TAB: bottom toolbar (mirrors Reader's audio-bar) ─────────────── */
 let watchSpeed = 1;
@@ -1257,10 +1337,35 @@ function initWatchToolbar() {
   v.addEventListener('volumechange', updateWatchMuteIcon);
   v.addEventListener('loadedmetadata', updateWatchTimeLabel);
   v.addEventListener('timeupdate', updateWatchProgress);
-  v.addEventListener('play', () => { document.getElementById('watch-play-icon').innerHTML = '<rect x="3" y="2" width="3" height="10"/><rect x="8" y="2" width="3" height="10"/>'; });
+  v.addEventListener('play', () => { document.getElementById('watch-play-icon').innerHTML = '<rect x="3" y="2" width="3" height="10"/><rect x="8" y="2" width="3" height="10"/>'; enterWatchTheater(); });
   v.addEventListener('pause', () => { document.getElementById('watch-play-icon').innerHTML = '<polygon points="3,1 13,7 3,13"/>'; });
   v.addEventListener('ended', () => { v.currentTime = 0; });
-  initSwipeToClose(document.getElementById('watch-tray-handle'), document.getElementById('watch-tray'), closeWatchTray);
+  updateWatchTheaterIcon();
+}
+
+/* ─────────────── WATCH TAB: theater/expanded mode ─────────────── */
+// Fills the whole view with video + transcript (no scrolling) instead of the normal
+// head/intro + capped-height layout. Entered automatically on play (so hitting play jumps
+// straight into it), and toggleable independently via the toolbar button.
+let watchTheaterOn = false;
+const WATCH_THEATER_ICON = { enter: '<path d="M1 5V1H5"/><path d="M13 5V1H9"/><path d="M1 9V13H5"/><path d="M13 9V13H9"/>', exit: '<path d="M1 1L5 5"/><path d="M1 5H5V1"/><path d="M13 1L9 5"/><path d="M13 5H9V1"/><path d="M1 13L5 9"/><path d="M1 9H5V13"/><path d="M13 13L9 9"/><path d="M13 9H9V13"/>' };
+function enterWatchTheater() {
+  if (watchTheaterOn) return;
+  watchTheaterOn = true;
+  document.getElementById('view-watch').classList.add('theater');
+  updateWatchTheaterIcon();
+}
+function exitWatchTheater() {
+  if (!watchTheaterOn) return;
+  watchTheaterOn = false;
+  document.getElementById('view-watch').classList.remove('theater');
+  updateWatchTheaterIcon();
+}
+function toggleWatchTheater() { watchTheaterOn ? exitWatchTheater() : enterWatchTheater(); }
+function updateWatchTheaterIcon() {
+  const btn = document.getElementById('watch-theater-btn');
+  document.getElementById('watch-theater-icon').innerHTML = watchTheaterOn ? WATCH_THEATER_ICON.exit : WATCH_THEATER_ICON.enter;
+  btn.title = watchTheaterOn ? t('exitTheater') : t('enterTheater');
 }
 function updateWatchLiveWord() {
   const time = document.getElementById('watch-video').currentTime;
@@ -1269,9 +1374,15 @@ function updateWatchLiveWord() {
     if (watchTimedWords[i].t <= time) idx = watchTimedWords[i].idx; else break;
   }
   if (idx === liveWatchWordIdx) return;
-  if (liveWatchWordIdx >= 0 && watchWordEls[liveWatchWordIdx]) watchWordEls[liveWatchWordIdx].classList.remove('live');
+  if (liveWatchWordIdx >= 0) {
+    watchWordEls[liveWatchWordIdx]?.classList.remove('live');
+    overlayWordEls[liveWatchWordIdx]?.classList.remove('live');
+  }
   liveWatchWordIdx = idx;
-  if (idx >= 0) watchWordEls[idx].classList.add('live');
+  if (idx >= 0) {
+    watchWordEls[idx].classList.add('live');
+    overlayWordEls[idx]?.classList.add('live');
+  }
 }
 function updateWatchActiveCue() {
   const time = document.getElementById('watch-video').currentTime;
@@ -1280,11 +1391,17 @@ function updateWatchActiveCue() {
     if (WATCH_CAPTIONS[i].start <= time) idx = i; else break;
   }
   if (idx === activeWatchCueIdx) return;
-  if (activeWatchCueIdx >= 0 && watchCueEls[activeWatchCueIdx]) watchCueEls[activeWatchCueIdx].classList.remove('active');
+  if (activeWatchCueIdx >= 0) {
+    watchArCueEls[activeWatchCueIdx]?.classList.remove('active');
+    watchTrCueEls[activeWatchCueIdx]?.classList.remove('active');
+  }
   activeWatchCueIdx = idx;
+  renderMobileCueOverlay(idx);
   if (idx >= 0) {
-    watchCueEls[idx].classList.add('active');
-    watchCueEls[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    watchArCueEls[idx].classList.add('active');
+    watchTrCueEls[idx].classList.add('active');
+    watchArCueEls[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    watchTrCueEls[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 }
 
@@ -1294,6 +1411,7 @@ buildWatchTranscript();
 initWatchToolbar();
 initTrayGestures();
 applyReaderScale();
+applyWatchScale();
 initOutsideTapClose('verbs-scroll', (target) => !target.closest('.verb-pill') && !target.closest('.verb-card'), closeVerbDrawer);
 renderVerbsView();
 applyAppLang();

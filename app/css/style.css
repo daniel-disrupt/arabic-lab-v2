@@ -2,7 +2,7 @@
 :root {
   --black: #0D0D0D; --mid: #8A8A8A; --light: #C8C7C4;
   --rule: #E4E3E0; --active-bg: #F0EFE9;
-  --tray-h: 148px; --bar-h: 64px; --reader-scale: 1;
+  --tray-h: 148px; --bar-h: 64px; --reader-scale: 1; --watch-scale: 1;
 }
 html, body {
   height: 100%; height: 100dvh; background: #fff; color: var(--black);
@@ -402,27 +402,73 @@ body.lang-en .vocab-row-he { direction: ltr; }
 body.lang-en .watch-head { direction: ltr; }
 .watch-title { font-size: 22px; font-weight: 600; line-height: 1.35; margin-bottom: 10px; }
 .watch-intro { font-size: 14px; line-height: 1.7; color: var(--black); }
-.watch-layout { display: flex; gap: 28px; align-items: flex-start; }
-.watch-video { flex: 0 0 auto; width: 100%; max-width: 460px; max-height: 58vh; border-radius: 8px; background: #000; }
+/* Three columns: video, Arabic transcript, translation transcript -- separate scrollable panels
+   rather than one paired block, so each can be read/scrolled on its own. Clicking a line in
+   either panel seeks the video and highlights + scrolls the matching line in both. */
+.watch-layout { display: flex; gap: 20px; align-items: flex-start; }
+.watch-video-wrap { position: relative; flex: 0 0 auto; width: 100%; max-width: 380px; }
+.watch-video { display: block; width: 100%; max-height: 58vh; border-radius: 8px; background: #000; }
 .watch-transcript { flex: 1; min-width: 0; max-height: 58vh; overflow-y: auto; border: 1px solid var(--rule); border-radius: 8px; padding: 4px 0; user-select: none; -webkit-user-select: none; }
-.watch-cue { padding: 10px 16px; font-size: 14px; line-height: 1.85; color: var(--mid); cursor: pointer; border-right: 3px solid transparent; transition: background .12s, color .12s; }
+.watch-cue { padding: 10px 16px; cursor: pointer; border-right: 3px solid transparent; color: var(--mid); transition: background .12s, color .12s; }
 .watch-cue:hover { background: var(--active-bg); }
-.watch-cue.active { color: var(--black); background: var(--active-bg); border-right-color: var(--black); font-weight: 500; }
-.watch-word { cursor: pointer; display: inline; border-radius: 3px; padding: 2px 1px; transition: background .08s; }
-.watch-word:hover { background: rgba(13,13,13,.06); }
+.watch-cue.active { background: var(--active-bg); border-right-color: var(--black); color: var(--black); font-weight: 500; }
+.watch-cue-ar { font-size: calc(14px * var(--watch-scale)); line-height: 1.85; transition: font-size .15s; }
+.watch-cue-tr { font-size: calc(14px * var(--watch-scale)); line-height: 1.75; transition: font-size .15s; }
+body.lang-en .watch-transcript-tr-panel .watch-cue { direction: ltr; text-align: left; }
+.watch-word { display: inline; border-radius: 3px; padding: 2px 1px; }
+.watch-word.live { box-shadow: inset 0 -3px 0 0 currentColor; }
 .watch-word.selected { background: var(--black); color: #fff; }
+.watch-word.selected.live { box-shadow: none; }
 .watch-word.in-range { background: rgba(13,13,13,.13); }
 .watch-word.in-range.range-start, .watch-word.in-range.range-end { background: rgba(13,13,13,.22); }
-.watch-word.live { box-shadow: inset 0 -3px 0 0 currentColor; }
-.watch-word.live.selected { box-shadow: none; }
+/* Highlights the specific translation words estimated to correspond to a selected Arabic
+   word/phrase (proportional-position mapping, not a real alignment -- see
+   linkWatchSelectionToTranslation in app.js). */
+.watch-word.tr-phrase-highlight { background: var(--black); color: #fff; }
+.watch-transcript.watch-tr-hidden { display: none; }
+
+/* Mobile-only overlay captions -- burned-in-looking (but real HTML/DOM) subtitle ribbon shown
+   directly on the video during mobile theater mode, instead of the separate scrolling columns
+   used on desktop. Hidden entirely outside that mode (see media query below). */
+.watch-mobile-captions { display: none; }
+.watch-mobile-cap-ar { color: #fff; font-size: calc(17px * var(--watch-scale)); line-height: 1.7; text-align: center; }
+.watch-mobile-cap-ar .watch-word.live { box-shadow: inset 0 -3px 0 0 #fff; }
+.watch-mobile-cap-tr { color: rgba(255,255,255,.75); font-size: calc(13px * var(--watch-scale)); line-height: 1.5; text-align: center; margin-top: 6px; }
+.watch-mobile-cap-tr.watch-tr-hidden { display: none; }
+.watch-tr-toggle-btn { width: auto; padding: 0 9px; font-size: 10px; font-weight: 700; letter-spacing: .02em; }
+.watch-tr-toggle-btn:not(.active) { opacity: .35; }
 
 /* Watch tab's bottom bar mirrors the Reader's reader-bottom (tray + audio-bar), same classes reused */
 .watch-bottom { flex-shrink: 0; background: #fff; padding-bottom: env(safe-area-inset-bottom); position: relative; }
 
+/* Theater/expanded mode: video + transcripts fill the whole view, no scrolling needed -- entered
+   automatically on play, or via the toolbar toggle. Head/intro text hides to reclaim the space. */
+#view-watch.theater .watch-scroll { overflow: hidden; display: flex; }
+#view-watch.theater .watch-wrap { max-width: none; width: 100%; padding: 16px 20px 0; height: 100%; display: flex; flex-direction: column; }
+#view-watch.theater .watch-head { display: none; }
+#view-watch.theater .watch-layout { flex: 1; min-height: 0; align-items: stretch; }
+#view-watch.theater .watch-video-wrap { height: 100%; width: auto; max-width: 38%; }
+#view-watch.theater .watch-video { height: 100%; width: auto; max-height: none; }
+#view-watch.theater .watch-transcript { height: 100%; max-height: none; }
+
 @media (max-width: 720px) {
   .watch-layout { flex-direction: column; }
-  .watch-video { max-width: 100%; max-height: 46vh; margin: 0 auto; display: block; }
-  .watch-transcript { max-height: 32vh; width: 100%; }
+  .watch-video-wrap { max-width: 100%; margin: 0 auto; }
+  .watch-video { max-height: 36vh; margin: 0 auto; }
+  .watch-transcript { max-height: 24vh; width: 100%; }
+
+  /* Mobile theater mode: video-first, full-screen-feeling, with karaoke captions overlaid on
+     the video itself rather than separate scrolling columns (those get hidden entirely). */
+  #view-watch.theater .watch-wrap { padding: 10px 12px 0; }
+  #view-watch.theater .watch-layout { flex: 1; min-height: 0; }
+  #view-watch.theater .watch-video-wrap { width: 100%; max-width: 100%; height: 100%; flex: 1; min-height: 0; display: flex; align-items: center; }
+  #view-watch.theater .watch-video { width: 100%; height: 100%; max-height: none; object-fit: contain; }
+  #view-watch.theater .watch-transcript { display: none; }
+  #view-watch.theater .watch-mobile-captions {
+    display: block; position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 18px 16px calc(14px + env(safe-area-inset-bottom));
+    background: linear-gradient(to top, rgba(0,0,0,.8), rgba(0,0,0,0));
+  }
 }
 
 /* ABOUT VIEW */
