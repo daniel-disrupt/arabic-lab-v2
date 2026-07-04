@@ -412,13 +412,24 @@ body.lang-en .watch-outro-group { direction: ltr; }
 .watch-video { display: block; width: 100%; max-height: 58vh; border-radius: 8px; background: #000; }
 .watch-video-play-overlay {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 56px; height: 56px; border-radius: 50%; border: none;
+  width: 56px; height: 56px; border-radius: 50%; border: none; z-index: 7;
   background: rgba(13,13,13,.72); color: #fff; display: flex; align-items: center; justify-content: center;
   cursor: pointer; transition: background .12s, transform .12s;
 }
 .watch-video-play-overlay svg { fill: #fff; margin-left: 2px; }
 .watch-video-play-overlay:hover { background: rgba(13,13,13,.88); transform: translate(-50%, -50%) scale(1.06); }
 .watch-video-wrap.playing .watch-video-play-overlay { display: none; }
+/* Thin draggable scrub bar burned onto the bottom edge of the video itself (distinct from the
+   toolbar's scrubber below) -- .watch-video-scrubber-hit is the generous touch/click target;
+   .watch-video-scrubber-track is just the visible sliver, thickening slightly on hover/drag. */
+.watch-video-scrubber-hit {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 22px; z-index: 6;
+  display: flex; align-items: flex-end; cursor: pointer; touch-action: none;
+}
+.watch-video-scrubber-track { width: 100%; height: 4px; background: rgba(255,255,255,.3); transition: height .12s; }
+.watch-video-scrubber-hit:hover .watch-video-scrubber-track,
+.watch-video-scrubber-hit.dragging .watch-video-scrubber-track { height: 7px; }
+.watch-video-scrubber-fill { height: 100%; width: 0%; background: #fff; }
 .watch-transcript { flex: 1; min-width: 0; max-height: 58vh; overflow-y: auto; border: 1px solid var(--rule); border-radius: 8px; padding: 4px 0; user-select: none; -webkit-user-select: none; }
 .watch-cue { padding: 10px 16px; cursor: pointer; border-right: 3px solid transparent; color: var(--mid); transition: background .12s, color .12s; }
 .watch-cue:hover { background: var(--active-bg); }

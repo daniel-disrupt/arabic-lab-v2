@@ -1343,8 +1343,31 @@ function updateWatchTimeLabel() { const v = document.getElementById('watch-video
 function updateWatchProgress() {
   const v = document.getElementById('watch-video');
   const total = v.duration || 1;
-  document.getElementById('watch-scrubber-fill').style.width = (v.currentTime / total * 100) + '%';
+  const pct = (v.currentTime / total * 100) + '%';
+  document.getElementById('watch-scrubber-fill').style.width = pct;
+  document.getElementById('watch-video-scrubber-fill').style.width = pct;
   updateWatchTimeLabel();
+}
+// Draggable scrub bar overlaid on the video itself (separate from the toolbar's click-only
+// scrubber) -- mirrors the Reader's word drag-select gesture handling: pointerdown seeks
+// immediately and arms dragging, pointermove re-seeks continuously, pointerup disarms.
+function initVideoScrubberDrag() {
+  const hit = document.getElementById('watch-video-scrubber-hit');
+  const v = document.getElementById('watch-video');
+  let dragging = false;
+  function seekFromClientX(clientX) {
+    const r = hit.getBoundingClientRect();
+    const pct = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+    v.currentTime = pct * (v.duration || 0);
+    updateWatchProgress();
+  }
+  hit.addEventListener('mousedown', (e) => { dragging = true; hit.classList.add('dragging'); seekFromClientX(e.clientX); e.preventDefault(); });
+  document.addEventListener('mousemove', (e) => { if (dragging) seekFromClientX(e.clientX); });
+  document.addEventListener('mouseup', () => { if (dragging) { dragging = false; hit.classList.remove('dragging'); } });
+  hit.addEventListener('touchstart', (e) => { dragging = true; hit.classList.add('dragging'); seekFromClientX(e.touches[0].clientX); }, { passive: true });
+  hit.addEventListener('touchmove', (e) => { if (dragging) { seekFromClientX(e.touches[0].clientX); e.preventDefault(); } }, { passive: false });
+  hit.addEventListener('touchend', () => { dragging = false; hit.classList.remove('dragging'); });
+  hit.addEventListener('touchcancel', () => { dragging = false; hit.classList.remove('dragging'); });
 }
 function initWatchToolbar() {
   const v = document.getElementById('watch-video');
@@ -1355,6 +1378,7 @@ function initWatchToolbar() {
   v.addEventListener('pause', () => { document.getElementById('watch-play-icon').innerHTML = '<polygon points="3,1 13,7 3,13"/>'; document.querySelector('.watch-video-wrap').classList.remove('playing'); });
   v.addEventListener('ended', () => { v.currentTime = 0; document.querySelector('.watch-video-wrap').classList.remove('playing'); });
   updateWatchTheaterIcon();
+  initVideoScrubberDrag();
 }
 
 /* ─────────────── WATCH TAB: theater/expanded mode ─────────────── */
