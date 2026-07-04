@@ -447,23 +447,30 @@ body.lang-en .watch-transcript-tr-panel .watch-cue { direction: ltr; text-align:
 #view-watch.theater .watch-transcript { height: 100%; max-height: none; }
 
 @media (max-width: 720px) {
-  .watch-layout { flex-direction: column; }
-  .watch-video-wrap { max-width: 100%; margin: 0 auto; }
-  .watch-video { max-height: 36vh; margin: 0 auto; }
-  .watch-transcript { max-height: 24vh; width: 100%; }
+  /* Mobile skips the separate scrollable transcript cards entirely, even before pressing play --
+     the video just fills the space below the intro text instead. The transcript only ever shows
+     as karaoke captions burned over the video, once playing (theater mode below). */
+  .watch-scroll { overflow: hidden; display: flex; }
+  .watch-wrap { width: 100%; height: 100%; display: flex; flex-direction: column; padding: 16px 16px 0; }
+  .watch-layout { flex: 1; min-height: 0; flex-direction: column; }
+  .watch-video-wrap { width: 100%; max-width: 100%; height: 100%; flex: 1; min-height: 0; display: flex; align-items: center; margin: 0; }
+  .watch-video { width: 100%; height: 100%; max-height: none; object-fit: contain; margin: 0 auto; }
+  .watch-transcript { display: none; }
 
-  /* Mobile theater mode: video-first, full-screen-feeling, with karaoke captions overlaid on
-     the video itself rather than separate scrolling columns (those get hidden entirely). */
-  #view-watch.theater .watch-wrap { padding: 10px 12px 0; }
-  #view-watch.theater .watch-layout { flex: 1; min-height: 0; }
-  #view-watch.theater .watch-video-wrap { width: 100%; max-width: 100%; height: 100%; flex: 1; min-height: 0; display: flex; align-items: center; }
+  /* Mobile theater mode: same video-fills-the-view layout as above, but edge-to-edge (no
+     wrap padding) and with the head/intro swapped for karaoke captions burned over the video,
+     so it reads as a real full-screen player. Also hides the app's global header/tab bar (see
+     body class toggle in enterWatchTheater/exitWatchTheater, app.js) since .header lives outside
+     #view-watch and can't be reached by a selector scoped to it alone. */
+  #view-watch.theater .watch-wrap { padding: 0; }
+  #view-watch.theater .watch-video-wrap { width: 100%; max-width: 100%; height: 100%; }
   #view-watch.theater .watch-video { width: 100%; height: 100%; max-height: none; object-fit: contain; }
-  #view-watch.theater .watch-transcript { display: none; }
   #view-watch.theater .watch-mobile-captions {
     display: block; position: absolute; left: 0; right: 0; bottom: 0;
     padding: 18px 16px calc(14px + env(safe-area-inset-bottom));
     background: linear-gradient(to top, rgba(0,0,0,.8), rgba(0,0,0,0));
   }
+  body.watch-theater-active .header { display: none; }
 }
 
 /* ABOUT VIEW */

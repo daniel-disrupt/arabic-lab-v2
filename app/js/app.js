@@ -258,6 +258,7 @@ function switchTab(name) {
   if (activeTabName === 'watch' && name !== 'watch') {
     const video = document.getElementById('watch-video');
     if (video) video.pause();
+    exitWatchTheater();
   }
   activeTabName = name;
   const tabs = document.querySelectorAll('.tab');
@@ -1332,12 +1333,17 @@ function enterWatchTheater() {
   if (watchTheaterOn) return;
   watchTheaterOn = true;
   document.getElementById('view-watch').classList.add('theater');
+  // Body-level class since the app's global header sits outside #view-watch -- on mobile
+  // (see CSS) this hides it too, so the player reads as truly full-screen instead of boxed
+  // in below the nav bar.
+  document.body.classList.add('watch-theater-active');
   updateWatchTheaterIcon();
 }
 function exitWatchTheater() {
   if (!watchTheaterOn) return;
   watchTheaterOn = false;
   document.getElementById('view-watch').classList.remove('theater');
+  document.body.classList.remove('watch-theater-active');
   updateWatchTheaterIcon();
 }
 function toggleWatchTheater() { watchTheaterOn ? exitWatchTheater() : enterWatchTheater(); }
