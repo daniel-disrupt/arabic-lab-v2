@@ -504,6 +504,14 @@ const AUDIO_SOURCES = {
   recording: { src: 'audio/abed-speech.mp3', chunks: CHUNKS },
   voiceover: VOICEOVER_SRC ? { src: VOICEOVER_SRC, chunks: VOICEOVER_CHUNKS } : null,
 };
+// Karaoke (per-word) highlighting only runs on the AI voiceover — it's synthesized
+// directly from these exact tokens, so word-level alignment is reliable. On the real
+// recording, word-level ASR timestamps proved too unreliable/distracting (see
+// updateLiveWord below and the disabled call further down) and chunk-level is all
+// that's used there.
+const voiceoverTimedWords = (typeof VOICEOVER_WORD_TIMES !== 'undefined' && VOICEOVER_WORD_TIMES)
+  ? VOICEOVER_WORD_TIMES.slice().sort((a, b) => a.t - b.t)
+  : [];
 let audioSource = 'recording';
 function setAudioSource(mode) {
   const source = AUDIO_SOURCES[mode];
@@ -513,6 +521,8 @@ function setAudioSource(mode) {
   audioEl.src = source.src;
   audioEl.load();
   lastScrolledChunkCi = -1;
+  if (liveWordIdx >= 0 && wordEls[liveWordIdx]) wordEls[liveWordIdx].el.classList.remove('live');
+  liveWordIdx = -1;
   document.querySelectorAll('.voice-toggle-btn').forEach((b) => b.classList.toggle('active', b.dataset.src === mode));
   if (wasPlaying) audioEl.play();
 }
@@ -536,9 +546,10 @@ function updateProgress() {
     document.querySelector('.chunk[data-ci="'+active+'"]')?.scrollIntoView({behavior:'smooth',block:'center'});
     lastScrolledChunkCi = active;
   }
-  // Per-word live highlighting disabled — word-level ASR timestamps proved too unreliable for
-  // Arabic dialectal speech and produced visibly wrong/distracting highlights.
-  // updateLiveWord();
+  // Per-word live highlighting (karaoke mode): only on the AI voiceover, where word-level
+  // alignment is reliable (see voiceoverTimedWords above). On the real recording, word-level
+  // ASR timestamps proved too unreliable/distracting, so it stays chunk-level only there.
+  if (audioSource === 'voiceover') updateLiveWord();
   // Sentence-level highlighting disabled too — a second highlight layer nested inside the
   // already-highlighted active chunk read as visual noise rather than useful signal. Chunk-level
   // highlighting alone (above) is the sync UI for now. sentT data and updateActiveSentence() are
@@ -559,8 +570,8 @@ function updateActiveSentence() {
 function updateLiveWord() {
   const time = audioEl.currentTime;
   let idx = -1;
-  for (let i = 0; i < timedWords.length; i++) {
-    if (timedWords[i].t <= time) idx = timedWords[i].idx; else break;
+  for (let i = 0; i < voiceoverTimedWords.length; i++) {
+    if (voiceoverTimedWords[i].t <= time) idx = voiceoverTimedWords[i].idx; else break;
   }
   if (idx === liveWordIdx) return;
   if (liveWordIdx >= 0 && wordEls[liveWordIdx]) wordEls[liveWordIdx].el.classList.remove('live');
