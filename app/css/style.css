@@ -88,7 +88,7 @@ button, .tab, .word, .vocab-chip, .verb-pill, .verb-group-header { touch-action:
 /* ── READER ── */
 .scroll-area { flex: 1; overflow-y: auto; overflow-x: hidden; }
 .reader { max-width: 660px; margin: 0 auto; padding: 40px 0 48px; }
-.lesson-head { padding: 0 28px 32px; border-bottom: 1px solid var(--rule); margin-bottom: 28px; text-align: right; }
+.lesson-head { padding: 0 28px 32px; border-bottom: 1px solid var(--rule); margin-bottom: 28px; text-align: right; user-select: text; -webkit-user-select: text; }
 .lesson-title { font-size: 22px; font-weight: 600; line-height: 1.35; direction: rtl; text-align: start; margin-bottom: 10px; cursor: pointer; transition: opacity .12s; }
 .lesson-title:hover { opacity: .65; }
 body.lang-en .lesson-title { direction: ltr; }
@@ -101,12 +101,14 @@ body.lang-en .lesson-intro { direction: ltr; }
   font-family: 'Traditional Arabic','Arabic Typesetting','Scheherazade New',serif;
   font-size: 26px; line-height: 1.5; direction: rtl; text-align: right;
   padding: 0 28px 4px; cursor: pointer; transition: opacity .12s;
+  user-select: text; -webkit-user-select: text;
 }
 .lesson-title-ar:hover { opacity: .65; }
 .lesson-location-ar {
   font-family: 'Traditional Arabic','Arabic Typesetting','Scheherazade New',serif;
   font-size: 15px; color: var(--mid); direction: rtl; text-align: right;
   padding: 0 28px 24px; cursor: pointer; transition: opacity .12s;
+  user-select: text; -webkit-user-select: text;
 }
 .lesson-location-ar:hover { opacity: .65; }
 .chunk { padding: 18px 28px; border-right: 3px solid transparent; transition: background .2s, border-color .2s; cursor: pointer; }
@@ -393,16 +395,30 @@ body.lang-en .vocab-row-he { direction: ltr; }
 /* WATCH VIEW */
 .watch-scroll { flex: 1; overflow-y: auto; }
 .watch-wrap { max-width: 1040px; margin: 0 auto; padding: 40px 24px 64px; }
-.watch-head { padding-bottom: 24px; border-bottom: 1px solid var(--rule); margin-bottom: 28px; direction: rtl; text-align: start; }
+.watch-head { padding-bottom: 24px; border-bottom: 1px solid var(--rule); margin-bottom: 28px; direction: rtl; text-align: start; user-select: text; -webkit-user-select: text; }
 body.lang-en .watch-head { direction: ltr; }
-.watch-title { font-size: 22px; font-weight: 600; line-height: 1.35; margin-bottom: 10px; }
-.watch-intro { font-size: 14px; line-height: 1.7; color: var(--black); }
+.watch-title { font-size: 24px; font-weight: 600; line-height: 1.35; margin-bottom: 8px; }
+.watch-subtitle { font-size: 13px; color: var(--mid); margin-bottom: 16px; }
+.watch-p { font-size: 15px; line-height: 1.75; color: var(--black); margin: 0 0 12px; }
+.watch-p:last-child { margin-bottom: 0; }
+.watch-outro-group { direction: rtl; text-align: start; margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--rule); user-select: text; -webkit-user-select: text; }
+body.lang-en .watch-outro-group { direction: ltr; }
+#view-watch.theater .watch-outro-group { display: none; }
 /* Three columns: video, Arabic transcript, translation transcript -- separate scrollable panels
    rather than one paired block, so each can be read/scrolled on its own. Clicking a line in
    either panel seeks the video and highlights + scrolls the matching line in both. */
 .watch-layout { display: flex; gap: 20px; align-items: flex-start; }
 .watch-video-wrap { position: relative; flex: 0 0 auto; width: 100%; max-width: 380px; }
 .watch-video { display: block; width: 100%; max-height: 58vh; border-radius: 8px; background: #000; }
+.watch-video-play-overlay {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 56px; height: 56px; border-radius: 50%; border: none;
+  background: rgba(13,13,13,.72); color: #fff; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .12s, transform .12s;
+}
+.watch-video-play-overlay svg { fill: #fff; margin-left: 2px; }
+.watch-video-play-overlay:hover { background: rgba(13,13,13,.88); transform: translate(-50%, -50%) scale(1.06); }
+.watch-video-wrap.playing .watch-video-play-overlay { display: none; }
 .watch-transcript { flex: 1; min-width: 0; max-height: 58vh; overflow-y: auto; border: 1px solid var(--rule); border-radius: 8px; padding: 4px 0; user-select: none; -webkit-user-select: none; }
 .watch-cue { padding: 10px 16px; cursor: pointer; border-right: 3px solid transparent; color: var(--mid); transition: background .12s, color .12s; }
 .watch-cue:hover { background: var(--active-bg); }
@@ -447,23 +463,24 @@ body.lang-en .watch-transcript-tr-panel .watch-cue { direction: ltr; text-align:
 #view-watch.theater .watch-transcript { height: 100%; max-height: none; }
 
 @media (max-width: 720px) {
-  /* Mobile skips the separate scrollable transcript cards entirely, even before pressing play --
-     the video just fills the space below the intro text instead. The transcript only ever shows
-     as karaoke captions burned over the video, once playing (theater mode below). */
-  .watch-scroll { overflow: hidden; display: flex; }
-  .watch-wrap { width: 100%; height: 100%; display: flex; flex-direction: column; padding: 16px 16px 0; }
-  .watch-layout { flex: 1; min-height: 0; flex-direction: column; }
-  .watch-video-wrap { width: 100%; max-width: 100%; height: 100%; flex: 1; min-height: 0; display: flex; align-items: center; margin: 0; }
-  .watch-video { width: 100%; height: 100%; max-height: none; object-fit: contain; margin: 0 auto; }
+  /* Pre-play, the homepage reads like a normal scrollable page -- narrative intro, video at a
+     capped height, narrative outro -- same shape as desktop, just stacked into one column.
+     The transcript stays hidden here regardless; it only ever shows as karaoke captions burned
+     over the video, once playing (theater mode below), which is a separate full-screen layout
+     entered automatically on play and unaffected by these pre-play rules. */
+  .watch-wrap { width: 100%; padding: 20px 16px 40px; }
+  .watch-layout { flex-direction: column; }
+  .watch-video-wrap { width: 100%; max-width: 100%; margin: 0 0 4px; }
+  .watch-video { width: 100%; height: auto; max-height: 42vh; object-fit: contain; margin: 0 auto; }
   .watch-transcript { display: none; }
 
-  /* Mobile theater mode: same video-fills-the-view layout as above, but edge-to-edge (no
-     wrap padding) and with the head/intro swapped for karaoke captions burned over the video,
-     so it reads as a real full-screen player. Also hides the app's global header/tab bar (see
-     body class toggle in enterWatchTheater/exitWatchTheater, app.js) since .header lives outside
-     #view-watch and can't be reached by a selector scoped to it alone. */
+  /* Mobile theater mode: video fills the whole view edge-to-edge (no wrap padding), with the
+     head/intro/outro swapped for karaoke captions burned over the video, so it reads as a real
+     full-screen player. Also hides the app's global header/tab bar (see body class toggle in
+     enterWatchTheater/exitWatchTheater, app.js) since .header lives outside #view-watch and
+     can't be reached by a selector scoped to it alone. */
   #view-watch.theater .watch-wrap { padding: 0; }
-  #view-watch.theater .watch-video-wrap { width: 100%; max-width: 100%; height: 100%; }
+  #view-watch.theater .watch-video-wrap { width: 100%; max-width: 100%; height: 100%; margin: 0; }
   #view-watch.theater .watch-video { width: 100%; height: 100%; max-height: none; object-fit: contain; }
   #view-watch.theater .watch-mobile-captions {
     display: block; position: absolute; left: 0; right: 0; bottom: 0;
@@ -475,7 +492,7 @@ body.lang-en .watch-transcript-tr-panel .watch-cue { direction: ltr; text-align:
 
 /* ABOUT VIEW */
 .about-scroll { flex: 1; overflow-y: auto; }
-.about-wrap { max-width: 640px; margin: 0 auto; padding: 40px 24px 64px; }
+.about-wrap { max-width: 640px; margin: 0 auto; padding: 40px 24px 64px; user-select: text; -webkit-user-select: text; }
 .about-section { margin-bottom: 40px; }
 .about-eyebrow { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--mid); margin-bottom: 8px; }
 .about-heading { font-size: 20px; font-weight: 600; margin: 0 0 14px; color: var(--black); }

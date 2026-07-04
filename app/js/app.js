@@ -75,26 +75,49 @@ let appLang = localStorage.getItem('arabicLabLang') || 'he';
 // Canonical Hebrew pronoun strings used throughout verbs-data.js conjugation rows.
 const PRONOUN_EN = { 'אני':'I', 'אתה':'you (m.)', 'את':'you (f.)', 'הוא':'he', 'היא':'she', 'אנחנו':'we', 'אתם/ן':'you (pl.)', 'הם/ן':'they' };
 const TAB_LABELS = {
-  en: { reader: 'Reader', vocab: 'Vocab', verbs: 'Verbs', watch: 'Watch', about: 'About' },
-  he: { reader: 'קורא', vocab: 'אוצר מילים', verbs: 'פעלים', watch: 'צפייה', about: 'אודות' },
+  en: { reader: 'Reader', vocab: 'Vocab', verbs: 'Verbs', watch: 'Home', about: 'About' },
+  he: { reader: 'קורא', vocab: 'אוצר מילים', verbs: 'פעלים', watch: 'בית', about: 'אודות' },
 };
-const WATCH_LABELS = { en: 'Watch the full speech', he: 'צפייה בנאום המלא' };
-const WATCH_INTRO = {
-  en: "The original video of the speech, trimmed to cut an unrelated screen-recording moment at the start and the closing remarks in Hebrew at the end. A running translation plays alongside the Arabic transcript so you can watch straight through — tap any line to jump there. For word-by-word study, open the Reader tab instead.",
-  he: 'הסרטון המקורי של הנאום, נחתך כדי להסיר רגע לא רלוונטי של הקלטת מסך בהתחלה ואת דברי הסיום בעברית בסוף. תרגום רץ מופיע לצד התמליל בערבית כדי לאפשר צפייה רציפה — אפשר ללחוץ על כל שורה כדי לקפוץ לרגע הזה. ללימוד מילה-במילה, אפשר לפתוח את לשונית הקורא.',
+// Homepage (the "watch" view/tab internally) frames the video as the emotional entry point:
+// context on the moment, then the speech itself, then a bridge into the study tools in the
+// other tabs. Split into intro (above the video) and outro (below it) paragraph arrays so the
+// video sits in between, same trilingual-by-appLang pattern as ABOUT_CONTENT below.
+const HOME_CONTENT = {
+  en: {
+    title: 'Abed Abu Shehadeh, in his own words',
+    subtitle: 'Ghazaza Park, Jaffa &middot; June 28, 2026',
+    intro: [
+      "In June 2026, three young men were killed in Jaffa within the span of three days — the latest in a wave of organized-crime violence that a shaken, furious community felt the police had done nothing to stop. On the evening of June 28, hundreds gathered at Ghazaza Park to demand accountability. Abed Abu Shehadeh, chairman of Jaffa's Islamic Council, addressed the crowd.",
+      'To really understand what a community is going through — the grief, the exhaustion, the anger underneath it — reading a summary isn’t enough. We have to listen closely: to the words people reach for, the tone they take, the cry underneath the argument. What follows is Abed, in his own words.',
+    ],
+    outro: [
+      "The tabs above turn this speech into something you can study, not just watch. I took Abed's words and built a simplified, cleaned-up version of the text — fully translated, fully voweled with tashkeel, and read aloud by an AI voice — so Arabic learners can work through it slowly: word by word in Reader, phrase by phrase and verb by verb in Vocab and Verbs. The full story behind the protest, the speaker, and this project is in About.",
+    ],
+  },
+  he: {
+    title: 'עבד אבו שחאדה, במילים שלו',
+    subtitle: 'גן אל-ע׳זאזווה, יפו &middot; 28 ביוני 2026',
+    intro: [
+      'ביוני 2026 נרצחו שלושה צעירים ביפו בתוך פרק זמן של שלושה ימים — האחרונה בשורת אלימות של פשיעה מאורגנת שקהילה מזועזעת וזועמת חשה שהמשטרה לא עשתה כלום כדי לעצור. בערב ה-28 ביוני התאספו מאות בגן אל-ע׳זאזווה כדי לדרוש אחריותיות. עבד אבו שחאדה, יו״ר המועצה האסלאמית ביפו, פנה לקהל.',
+      'כדי להבין באמת מה עוברת קהילה — האבל, התשישות, הזעם שמתחתיו — לא מספיק לקרוא תקציר. צריך להקשיב מקרוב: למילים שאנשים בוחרים, לטון שהם נוקטים, לזעקה שמתחת לטיעון. מה שבא בהמשך הוא עבד, במילים שלו.',
+    ],
+    outro: [
+      'הלשוניות שמעל הופכות את הנאום הזה לדבר שאפשר ללמוד ממנו, לא רק לצפות בו. לקחתי את מילותיו של עבד ובניתי מהן גרסה מפושטת ומסודרת של הטקסט — מתורגמת במלואה, מנוקדת במלואה בתשכיל, ומוקראת בקול בינה מלאכותית — כך שלומדי ערבית יוכלו לעבוד עליה לאט: מילה במילה בלשונית הקורא, ביטוי-ביטוי ופועל-פועל באוצר המילים ובפעלים. הסיפור המלא על ההפגנה, הדובר, והפרויקט הזה נמצא בלשונית אודות.',
+    ],
+  },
 };
 const INTRO_CONTENT = {
   en: {
     title: "Abed Abu Shehadeh's Speech",
     speakerLabel: 'Speaker:', speaker: 'Abed Abu Shehadeh',
     locationLabel: 'Location:', location: 'Ghazaza Park, Jaffa · June 28, 2026',
-    text: "Abed Abu Shehadeh's call to a grieving, frustrated Jaffa — recorded live at a protest against organized crime and police inaction, then cleaned up here into a readable text, read aloud by an AI voice synced word-for-word with it. Listen first, then read: tap any word, or drag across a phrase, for its meaning. For the real recording, watch the video in the Watch tab. The full story is in the About tab.",
+    text: "Abed Abu Shehadeh's call to a grieving, frustrated Jaffa — recorded live at a protest against organized crime and police inaction, then cleaned up here into a readable text, read aloud by an AI voice synced word-for-word with it. Listen first, then read: tap any word, or drag across a phrase, for its meaning. For the real recording, watch the video on the Home tab. The full story is in the About tab.",
   },
   he: {
     title: 'נאומו של עבד אבו שחאדה',
     speakerLabel: 'דובר:', speaker: 'עבד אבו שחאדה',
     locationLabel: 'מיקום:', location: 'גן אל-ע׳זאזווה, יפו · 28 ביוני 2026',
-    text: 'קריאתו של עבד אבו שחאדה ליפו האבלה והמתוסכלת — הוקלטה בשידור חי בהפגנה נגד הפשיעה המאורגנת וכשלון המשטרה, ונערכה כאן לטקסט קריא המוקרא בקול בינה מלאכותית המסונכרן איתו מילה במילה. תחילה הקשיבו, ואז קראו: הקישו על כל מילה, או גררו על פני ביטוי, לקבלת פירושו. את ההקלטה האמיתית אפשר לצפות בסרטון בלשונית "צפייה". הסיפור המלא נמצא בלשונית "אודות".',
+    text: 'קריאתו של עבד אבו שחאדה ליפו האבלה והמתוסכלת — הוקלטה בשידור חי בהפגנה נגד הפשיעה המאורגנת וכשלון המשטרה, ונערכה כאן לטקסט קריא המוקרא בקול בינה מלאכותית המסונכרן איתו מילה במילה. תחילה הקשיבו, ואז קראו: הקישו על כל מילה, או גררו על פני ביטוי, לקבלת פירושו. את ההקלטה האמיתית אפשר לצפות בסרטון בלשונית "בית". הסיפור המלא נמצא בלשונית "אודות".',
   },
 };
 // Every static UI label/menu/button in Vocab/Verbs/Reader chrome — keyed by appLang.
@@ -177,8 +200,11 @@ function applyAppLang() {
   document.getElementById('menu-tab-watch').textContent = tabLabels.watch;
   document.getElementById('menu-tab-about').textContent = tabLabels.about;
   document.getElementById('mobile-header-title').textContent = tabLabels[activeTabName];
-  document.getElementById('watch-title').textContent = WATCH_LABELS[appLang];
-  document.getElementById('watch-intro').textContent = WATCH_INTRO[appLang];
+  const home = HOME_CONTENT[appLang];
+  document.getElementById('watch-title').textContent = home.title;
+  document.getElementById('watch-subtitle').innerHTML = home.subtitle;
+  document.getElementById('watch-intro').innerHTML = home.intro.map(p => '<p class="watch-p">' + p + '</p>').join('');
+  document.getElementById('watch-outro').innerHTML = home.outro.map(p => '<p class="watch-p">' + p + '</p>').join('');
   document.getElementById('vocab-title').textContent = t('vocabTitle');
   document.getElementById('vocab-search').placeholder = t('vocabSearchPlaceholder');
   document.getElementById('chip-all').textContent = t('filterAll');
@@ -958,14 +984,18 @@ const ABOUT_CONTENT = {
     dir: 'ltr',
     sections: [
       { eyebrow: 'The Protest', heading: 'Jaffa, June 28, 2026', paragraphs: [
-        'Three young men were killed in Jaffa within a three-day span in June 2026, the last — Mustafa Abu Lasan — by a car bomb in Holon. Frustration at organized crime, and at a police response residents saw as negligent at best, boiled over into a demonstration at Ghazaza Park in Jaffa on Sunday evening, June 28. Protesters demanded the removal of the local police station commander and immediate, concrete steps to stop the killing.',
+        'Three young men were killed in Jaffa within a three-day span in June 2026, the last — Mustafa Abu Lasan — by a car bomb as he was driving his 6-year-old son to school. Frustration at organized crime, and at a police response residents saw as negligent at best, boiled over into a demonstration at Ghazaza Park in Jaffa on Sunday evening, June 28. Protesters demanded the removal of the local police station commander and immediate, concrete steps to stop the killing.',
         'Organizers announced follow-up actions from the same stage: a sit-in tent at Ghazaza Park the following Thursday, where bereaved mothers and sisters could tell their own stories, and a Friday march through Jaffa with black flags.',
       ]},
       { eyebrow: "Who's Speaking", heading: 'Abed Abu Shehadeh', paragraphs: [
         "Abed Abu Shehadeh is the chairman of the Islamic Council (al-Hay'a al-Islamiyya) in Jaffa. He led the June 28 protest and this speech, framing the community's silence in the face of repeated killings as itself dangerous — normalizing what should never be normal — and calling on Jaffa's youth to set aside internal political divisions in favor of solidarity.",
       ]},
       { eyebrow: 'Why I Built This', heading: 'A personal study tool', paragraphs: [
-        'I have a decent command of everyday spoken Palestinian Arabic, but seek to push further into the register used in grassroots community organizing and activism — the vocabulary for demanding accountability, mobilizing a community, and speaking publicly about grief and injustice. This speech, given by a community leader who I admire, about an urgent crisis in Jaffa, the city I love and where my daughter was born and raised, became the seed for a personal study tool: real audio, a cleaned-up readable text focused on spoken dialect, and vocabulary/verbs pulled from it, curated to my level and style.',
+        'I have a decent command of everyday spoken Palestinian Arabic, but seek to push further into the register used in grassroots community organizing and activism — the vocabulary for demanding accountability, mobilizing a community, and speaking publicly about grief and injustice. This speech, given by a community leader who I admire, about an urgent crisis in Jaffa, the city I love and where my daughter was born and lives, became the seed for a personal study tool: real audio, a cleaned-up readable text focused on spoken dialect, and vocabulary/verbs pulled from it, curated to my personal needs and learning style.',
+      ]},
+      { eyebrow: 'How I Built This', heading: 'The process, and where AI came in', paragraphs: [
+        "This isn't a professional build — it's something I put together myself, evenings and weekends, because I wanted this tool to exist and didn't want to wait for someone else to make it.",
+        'AI did a lot of the heavy lifting in the development of this tool: transcribing Abed\'s raw audio, translating it into Hebrew and English, producing a simplified written piece, adding the tashkeel that makes spoken Arabic legible to a learner, and generating the AI voiceover you hear in the Reader. I also used an AI coding assistant (Claude Code) to build the site itself — the tap-to-translate reader, the vocab and verb tools, all of it came together through that back-and-forth. My part was choosing the speech, shaping the pedagogy, checking translations, and deciding what a learner at my level actually needs.',
       ]},
     ],
     source: 'Source: <a href="https://www.mawteni48.com/archives/337152" target="_blank" rel="noopener noreferrer">mawteni48.com &middot; coverage of the June 28, 2026 protest</a> (Arabic)',
@@ -974,14 +1004,18 @@ const ABOUT_CONTENT = {
     dir: 'rtl',
     sections: [
       { eyebrow: 'ההפגנה', heading: 'יפו, 28 ביוני 2026', paragraphs: [
-        'שלושה צעירים נרצחו ביפו בתוך פרק זמן של שלושה ימים ביוני 2026, האחרון שבהם — מוסטפא אבו לסאן — בפיצוץ מטען חבלה ברכבו בחולון. תסכול מהפשיעה המאורגנת, ומתגובת המשטרה שתושבים תפסו כרשלנית בלשון המעטה, התפרץ להפגנה בגן אל-ע׳זאזווה ביפו בערב יום ראשון, 28 ביוני. המפגינים דרשו את הדחתו של מפקד תחנת המשטרה המקומית ונקיטת צעדים מיידיים וממשיים לעצירת ההרג.',
+        'שלושה צעירים נרצחו ביפו בתוך פרק זמן של שלושה ימים ביוני 2026, האחרון שבהם — מוסטפא אבו לסאן — בפיצוץ מטען חבלה ברכבו, בעודו נוהג את בנו בן השש לבית הספר. תסכול מהפשיעה המאורגנת, ומתגובת המשטרה שתושבים תפסו כרשלנית בלשון המעטה, התפרץ להפגנה בגן אל-ע׳זאזווה ביפו בערב יום ראשון, 28 ביוני. המפגינים דרשו את הדחתו של מפקד תחנת המשטרה המקומית ונקיטת צעדים מיידיים וממשיים לעצירת ההרג.',
         'המארגנים הכריזו מאותה הבמה על צעדי המשך: אוהל מחאה בגן אל-ע׳זאזווה ביום חמישי הקרוב, שבו אמהות ואחיות שכולות יוכלו לספר את סיפוריהן, וצעדה ביום שישי ברחבי יפו עם דגלים שחורים.',
       ]},
       { eyebrow: 'מי מדבר', heading: 'עבד אבו שחאדה', paragraphs: [
         'עבד אבו שחאדה הוא יו״ר המועצה האסלאמית ביפו. הוא הוביל את ההפגנה ואת הנאום הזה ב-28 ביוני, והציג את שתיקת הקהילה מול רציחות חוזרות ונשנות כמסוכנת כשלעצמה — מה שאסור שייחשב לשגרה הופך לשגרה — וקרא לבני הנוער ביפו להניח בצד את הפילוגים הפוליטיים הפנימיים למען אחדות.',
       ]},
       { eyebrow: 'למה בניתי את זה', heading: 'כלי לימוד אישי', paragraphs: [
-        'יש לי שליטה סבירה בערבית פלסטינית מדוברת יומיומית, אך אני מבקש להעמיק אל תוך הרובד הלשוני שבו משתמשים בארגון קהילתי ובאקטיביזם בשטח — אוצר המילים לדרישת אחריותיות, לגיוס קהילה, ולדיבור פומבי על אבל ועל אי-צדק. הנאום הזה, שנשא אותו מנהיג קהילתי שאני מעריך, על משבר דוחק ביפו — העיר שאני אוהב ושבה נולדה וגדלה בתי — הפך לזרע של כלי לימוד אישי: הקלטת שמע אמיתית, טקסט קריא ומסודר שמתמקד בניב המדובר, ואוצר מילים ופעלים שנשלפו ממנו, שנאספו בהתאמה לרמה ולסגנון שלי.',
+        'יש לי שליטה סבירה בערבית פלסטינית מדוברת יומיומית, אך אני מבקש להעמיק אל תוך הרובד הלשוני שבו משתמשים בארגון קהילתי ובאקטיביזם בשטח — אוצר המילים לדרישת אחריותיות, לגיוס קהילה, ולדיבור פומבי על אבל ועל אי-צדק. הנאום הזה, שנשא אותו מנהיג קהילתי שאני מעריך, על משבר דוחק ביפו — העיר שאני אוהב ושבה נולדה וחיה בתי — הפך לזרע של כלי לימוד אישי: הקלטת שמע אמיתית, טקסט קריא ומסודר שמתמקד בניב המדובר, ואוצר מילים ופעלים שנשלפו ממנו, שנאספו בהתאמה לצרכים האישיים ולסגנון הלמידה שלי.',
+      ]},
+      { eyebrow: 'איך בניתי את זה', heading: 'התהליך, והיכן נכנסה בינה מלאכותית', paragraphs: [
+        'זה לא פיתוח מקצועי — זה משהו שהרכבתי בעצמי, בערבים ובסופי שבוע, כי רציתי שהכלי הזה יתקיים ולא רציתי לחכות שמישהו אחר יבנה אותו.',
+        'בינה מלאכותית עשתה חלק גדול מהעבודה הקשה בפיתוח הכלי הזה: תמלול ההקלטה הגולמית של עבד, תרגומה לעברית ולאנגלית, הפקת נוסח כתוב מפושט, הוספת התשכיל שהופך ערבית מדוברת לקריאה עבור לומד, והפקת הקראת הבינה המלאכותית שנשמעת בלשונית הקורא. השתמשתי גם בעוזר תכנות מבוסס בינה מלאכותית (Claude Code) לבניית האתר עצמו — הקורא המבוסס על הקשה-לתרגום, כלי אוצר המילים והפעלים, הכול נבנה דרך אותו דיאלוג. החלק שלי היה לבחור את הנאום, לעצב את הגישה הפדגוגית, לבדוק תרגומים, ולהחליט מה לומד בשלב שלי צריך בפועל.',
       ]},
     ],
     source: 'מקור: <a href="https://www.mawteni48.com/archives/337152" target="_blank" rel="noopener noreferrer">mawteni48.com &middot; סיקור ההפגנה מ-28 ביוני 2026</a> (בערבית)',
@@ -1317,9 +1351,9 @@ function initWatchToolbar() {
   v.addEventListener('volumechange', updateWatchMuteIcon);
   v.addEventListener('loadedmetadata', updateWatchTimeLabel);
   v.addEventListener('timeupdate', updateWatchProgress);
-  v.addEventListener('play', () => { document.getElementById('watch-play-icon').innerHTML = '<rect x="3" y="2" width="3" height="10"/><rect x="8" y="2" width="3" height="10"/>'; enterWatchTheater(); });
-  v.addEventListener('pause', () => { document.getElementById('watch-play-icon').innerHTML = '<polygon points="3,1 13,7 3,13"/>'; });
-  v.addEventListener('ended', () => { v.currentTime = 0; });
+  v.addEventListener('play', () => { document.getElementById('watch-play-icon').innerHTML = '<rect x="3" y="2" width="3" height="10"/><rect x="8" y="2" width="3" height="10"/>'; document.querySelector('.watch-video-wrap').classList.add('playing'); enterWatchTheater(); });
+  v.addEventListener('pause', () => { document.getElementById('watch-play-icon').innerHTML = '<polygon points="3,1 13,7 3,13"/>'; document.querySelector('.watch-video-wrap').classList.remove('playing'); });
+  v.addEventListener('ended', () => { v.currentTime = 0; document.querySelector('.watch-video-wrap').classList.remove('playing'); });
   updateWatchTheaterIcon();
 }
 

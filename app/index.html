@@ -13,7 +13,7 @@
   <button class="hamburger-btn" id="hamburger-btn" onclick="openMenu()" aria-label="Menu">
     <svg width="19" height="14" viewBox="0 0 19 14"><rect width="19" height="2"/><rect y="6" width="19" height="2"/><rect y="12" width="19" height="2"/></svg>
   </button>
-  <span class="mobile-header-title" id="mobile-header-title">Watch</span>
+  <span class="mobile-header-title" id="mobile-header-title">Home</span>
   <div class="header-side">
     <div class="lang-switch" id="lang-switch">
       <button class="lang-switch-btn" data-lang="he" onclick="setAppLang('he')">עברית</button>
@@ -21,7 +21,7 @@
     </div>
   </div>
   <nav class="tabs">
-    <div class="tab active" id="tab-watch" onclick="switchTab('watch')">Watch</div>
+    <div class="tab active" id="tab-watch" onclick="switchTab('watch')">Home</div>
     <div class="tab" id="tab-reader" onclick="switchTab('reader')">Reader</div>
     <div class="tab" id="tab-vocab" onclick="switchTab('vocab')">Vocab</div>
     <div class="tab" id="tab-verbs" onclick="switchTab('verbs')">Verbs</div>
@@ -38,7 +38,7 @@
     <button class="side-menu-close" onclick="closeMenu()" aria-label="Close menu">&times;</button>
   </div>
   <div class="side-menu-items">
-    <div class="side-menu-item active" id="menu-tab-watch" onclick="selectMenuTab('watch')">Watch</div>
+    <div class="side-menu-item active" id="menu-tab-watch" onclick="selectMenuTab('watch')">Home</div>
     <div class="side-menu-item" id="menu-tab-reader" onclick="selectMenuTab('reader')">Reader</div>
     <div class="side-menu-item" id="menu-tab-vocab" onclick="selectMenuTab('vocab')">Vocab</div>
     <div class="side-menu-item" id="menu-tab-verbs" onclick="selectMenuTab('verbs')">Verbs</div>
@@ -160,8 +160,9 @@
   <div class="watch-scroll">
     <div class="watch-wrap">
       <div class="watch-head">
-        <h1 class="watch-title" id="watch-title">Watch the full speech</h1>
-        <p class="watch-intro" id="watch-intro">The original video of the speech, trimmed to cut an unrelated screen-recording moment at the start and the closing remarks in Hebrew at the end. Follow the transcript alongside — it highlights in sync with the video, and you can tap any line to jump there.</p>
+        <h1 class="watch-title" id="watch-title">Abed Abu Shehadeh, in his own words</h1>
+        <div class="watch-subtitle" id="watch-subtitle">Ghazaza Park, Jaffa &middot; June 28, 2026</div>
+        <div class="watch-intro-group" id="watch-intro"></div>
       </div>
       <div class="watch-layout">
         <div class="watch-video-wrap">
@@ -169,6 +170,9 @@
             <source src="video/abed-speech.mp4" type="video/mp4">
             <track id="watch-captions" kind="subtitles" src="video/captions-ar.vtt" srclang="ar" label="العربية">
           </video>
+          <button class="watch-video-play-overlay" id="watch-video-play-overlay" onclick="toggleWatchPlay()" aria-label="Play video">
+            <svg width="24" height="24" viewBox="0 0 14 14"><polygon points="3,1 13,7 3,13"/></svg>
+          </button>
           <div class="watch-mobile-captions" id="watch-mobile-captions">
             <div class="watch-mobile-cap-ar" id="watch-mobile-cap-ar"></div>
             <div class="watch-mobile-cap-tr" id="watch-mobile-cap-tr"></div>
@@ -177,6 +181,7 @@
         <div class="watch-transcript" id="watch-transcript-ar"></div>
         <div class="watch-transcript watch-transcript-tr-panel" id="watch-transcript-tr"></div>
       </div>
+      <div class="watch-outro-group" id="watch-outro"></div>
     </div>
   </div>
   <div class="watch-bottom">
