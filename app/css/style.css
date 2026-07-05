@@ -425,6 +425,18 @@ body.lang-en .watch-head { direction: ltr; }
 .watch-video-play-overlay svg { fill: #fff; margin-left: 2px; }
 .watch-video-play-overlay:hover { background: rgba(13,13,13,.88); transform: translate(-50%, -50%) scale(1.06); }
 .watch-video-wrap.playing .watch-video-play-overlay { display: none; }
+/* Close/back-to-Home control, burned onto the video itself -- only shown once theater/expanded
+   mode is active, since that's the only state where the video covers the rest of the homepage
+   and the toolbar below can get crowded (see mobile toolbar rules). Physical top-right corner,
+   not RTL-mirrored, matching the other overlay controls (scrubber, timestamps) that stay LTR. */
+.watch-close-btn {
+  display: none; position: absolute; top: 12px; right: 12px; z-index: 8;
+  width: 32px; height: 32px; border-radius: 50%; border: none;
+  background: rgba(13,13,13,.65); color: #fff; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .12s;
+}
+.watch-close-btn:hover { background: rgba(13,13,13,.88); }
+#view-watch.theater .watch-close-btn { display: flex; }
 /* Draggable scrub bar burned onto the bottom edge of the video itself (distinct from the
    toolbar's scrubber below) -- .watch-video-scrubber-hit is the generous touch/click target;
    .watch-video-scrubber-track is the visible bar, thickening slightly on hover/drag. A dark
@@ -511,6 +523,14 @@ body.lang-en .watch-transcript-tr-panel .watch-cue { direction: ltr; text-align:
     background: linear-gradient(to top, rgba(0,0,0,.8), rgba(0,0,0,0));
   }
   body.watch-theater-active .header { display: none; }
+  .watch-close-btn { top: calc(12px + env(safe-area-inset-top)); }
+
+  /* Toolbar has 6 controls at this width (theater-expand button hidden below, since the close
+     button above already covers "exit expanded view" on mobile) -- tighten gap/padding so
+     nothing gets pushed past the screen edge, which is what silently ate the theater/translation
+     buttons before (they rendered off-canvas with no scroll affordance to reach them). */
+  #watch-toolbar { gap: 8px; padding: 0 12px; }
+  #watch-theater-btn { display: none; }
 }
 
 /* ABOUT VIEW */

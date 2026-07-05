@@ -166,6 +166,9 @@
             <source src="video/abed-speech.mp4" type="video/mp4">
             <track id="watch-captions" kind="subtitles" src="video/captions-ar.vtt" srclang="ar" label="العربية">
           </video>
+          <button class="watch-close-btn" id="watch-close-btn" onclick="exitWatchTheater()" title="Exit expanded view" aria-label="Close video, back to Home">
+            <svg width="13" height="13" viewBox="0 0 13 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="1" y1="1" x2="12" y2="12"/><line x1="12" y1="1" x2="1" y2="12"/></svg>
+          </button>
           <button class="watch-video-play-overlay" id="watch-video-play-overlay" onclick="toggleWatchPlay()" aria-label="Play video">
             <svg width="24" height="24" viewBox="0 0 14 14"><polygon points="3,1 13,7 3,13"/></svg>
           </button>
@@ -191,6 +194,9 @@
         <span class="text-size-label" id="watch-text-size-label">100%</span>
         <button class="text-size-btn" id="watch-text-size-inc" onclick="adjustWatchScale(1)" aria-label="Increase text size">A&#8314;</button>
       </div>
+      <button class="mute-btn watch-tr-toggle-btn active" id="watch-tr-toggle-btn" onclick="toggleWatchTranslationVisible()" title="Hide translation">
+        <span aria-hidden="true">HE/EN</span>
+      </button>
     </div>
     <div class="audio-bar" id="watch-toolbar">
       <button class="mute-btn skip-btn" id="watch-skip-back-btn" onclick="skipWatch(-5)" title="Back 5 seconds" aria-label="Back 5 seconds">
@@ -217,9 +223,6 @@
         <svg id="watch-theater-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
           <path d="M1 5V1H5"/><path d="M13 5V1H9"/><path d="M1 9V13H5"/><path d="M13 9V13H9"/>
         </svg>
-      </button>
-      <button class="mute-btn watch-tr-toggle-btn active" id="watch-tr-toggle-btn" onclick="toggleWatchTranslationVisible()" title="Hide translation">
-        <span aria-hidden="true">HE/EN</span>
       </button>
     </div>
   </div>
