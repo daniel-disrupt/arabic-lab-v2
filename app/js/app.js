@@ -1486,6 +1486,9 @@ function enterWatchTheater() {
   // in below the nav bar.
   document.body.classList.add('watch-theater-active');
   updateWatchTheaterIcon();
+  // Push a history entry so the phone's back button (which browsers/PWAs treat as
+  // history.back()) closes this full-screen view instead of leaving the app entirely.
+  history.pushState({ watchTheater: true }, '');
 }
 function exitWatchTheater() {
   if (!watchTheaterOn) return;
@@ -1493,8 +1496,13 @@ function exitWatchTheater() {
   document.getElementById('view-watch').classList.remove('theater');
   document.body.classList.remove('watch-theater-active');
   updateWatchTheaterIcon();
+  // Consume the history entry pushed on enter (unless we're already here BECAUSE the back
+  // button just popped it -- the popstate handler below checks watchTheaterOn before calling
+  // this, so by the time we get here in that path, history has already moved past it).
+  if (history.state && history.state.watchTheater) history.back();
 }
 function toggleWatchTheater() { watchTheaterOn ? exitWatchTheater() : enterWatchTheater(); }
+window.addEventListener('popstate', () => { if (watchTheaterOn) exitWatchTheater(); });
 function updateWatchTheaterIcon() {
   const btn = document.getElementById('watch-theater-btn');
   document.getElementById('watch-theater-icon').innerHTML = watchTheaterOn ? WATCH_THEATER_ICON.exit : WATCH_THEATER_ICON.enter;
