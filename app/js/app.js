@@ -895,9 +895,10 @@ function renderVerbsView() {
     ? { past:'Past', present:'Present', imperative:'Imperative' }
     : { past:'עָבָר', present:'הוֹוֶה', imperative:'צִיווּי' };
 
-  const binyanHtml = isEn
-    ? (verb.formNum ? 'Form ' + verb.formNum : '<span style="opacity:.5">Unclassified</span>')
-    : (verb.binyan ? verb.binyan + (verb.formNum ? '<span style="font-weight:400;opacity:.55;margin-right:6px;font-size:11px">&nbsp;·&nbsp;'+verb.formNum+'</span>' : '') : '<span style="opacity:.5">טרם סווג</span>');
+  const binyanHtml = verb.formNum
+    ? '<span class="binyan-badge-ar">' + WAZN_PATTERNS[verb.formNum] + '</span>'
+      + '<span style="font-weight:400;opacity:.55;margin-right:6px;font-size:11px">&nbsp;·&nbsp;'+verb.formNum+'</span>'
+    : '<span style="opacity:.5">' + (isEn ? 'Unclassified' : 'טרם סווג') + '</span>';
   const rootTagHtml = isEn
     ? (verb.root ? 'Root ' + verb.root : 'Root — not yet identified')
     : (verb.root ? 'שורש '+verb.root : 'שורש — טרם זוהה');
