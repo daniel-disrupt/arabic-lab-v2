@@ -817,6 +817,21 @@ function addVerbToVerbsTab(ctx) {
 }
 
 /* ─────────────── VERBS VIEW ─────────────── */
+// Wazn (مِيزان صَرْفي) templates for Forms I–X, built on the classical placeholder
+// root ف-ع-ل: everything beyond the three root letters (tashkeel, a prefixed
+// hamza/ت/ن/سـت, an infixed ت, or a doubled final radical) is what that form adds.
+const WAZN_PATTERNS = {
+  1: 'فَعَلَ',
+  2: 'فَعَّلَ',
+  3: 'فَاعَلَ',
+  4: 'أَفْعَلَ',
+  5: 'تَفَعَّلَ',
+  6: 'تَفَاعَلَ',
+  7: 'اِنْفَعَلَ',
+  8: 'اِفْتَعَلَ',
+  9: 'اِفْعَلَّ',
+  10: 'اِسْتَفْعَلَ',
+};
 function renderVerbsView() {
   document.getElementById('verbs-count').textContent = t('verbsCount')(SAVED_VERBS.length);
   const UNSORTED = 'unsorted';
@@ -838,13 +853,15 @@ function renderVerbsView() {
     const label = document.createElement('div');
     label.className = 'verb-group-header' + (isCollapsed ? ' collapsed' : '');
     let titleHtml;
+    const waznPattern = formNum !== UNSORTED ? WAZN_PATTERNS[formNum] : null;
+    const waznHtml = waznPattern ? '<span class="verb-group-wazn">&nbsp;·&nbsp;' + waznPattern + '</span>' : '';
     if (formNum === UNSORTED) {
       titleHtml = appLang === 'en' ? 'Unclassified' : 'טרם סווג';
     } else if (appLang === 'en') {
-      titleHtml = 'Form ' + formNum;
+      titleHtml = 'Form ' + formNum + waznHtml;
     } else {
       const binyanName = groups[formNum][0].binyan;
-      titleHtml = 'בניין ' + formNum + (binyanName ? '<span class="verb-group-sub">&nbsp;·&nbsp;' + binyanName + '</span>' : '');
+      titleHtml = 'בניין ' + formNum + (binyanName ? '<span class="verb-group-sub">&nbsp;·&nbsp;' + binyanName + '</span>' : '') + waznHtml;
     }
     label.innerHTML = '<span class="verb-group-chevron">▾</span><span class="verb-group-title">'+titleHtml+'</span><span class="verb-group-count">'+groups[formNum].length+'</span>';
     label.onclick = () => toggleVerbGroup(groupKey);

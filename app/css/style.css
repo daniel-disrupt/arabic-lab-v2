@@ -212,6 +212,10 @@ body.lang-en .gloss-he { direction: ltr; }
 }
 .verb-group-title { font-size: 15px; font-weight: 800; letter-spacing: .04em; color: var(--black); }
 .verb-group-sub { font-weight: 400; letter-spacing: .02em; color: var(--mid); font-size: 13px; }
+.verb-group-wazn {
+  font-family: 'Traditional Arabic','Arabic Typesetting','Scheherazade New',serif;
+  font-weight: 400; color: var(--light); font-size: 17px; direction: rtl; unicode-bidi: isolate;
+}
 .verb-group-count { font-size: 11px; font-weight: 600; color: var(--mid); margin-inline-start: auto; }
 .verb-group-chevron { font-size: 10px; color: var(--mid); transition: transform .15s; flex-shrink: 0; }
 .verb-group-header.collapsed .verb-group-chevron { transform: rotate(-90deg); }
