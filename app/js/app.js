@@ -897,7 +897,7 @@ function renderVerbsView() {
 
   const binyanHtml = verb.formNum
     ? '<span class="binyan-badge-ar">' + WAZN_PATTERNS[verb.formNum] + '</span>'
-      + '<span style="font-weight:400;opacity:.55;margin-right:6px;font-size:11px">&nbsp;·&nbsp;'+verb.formNum+'</span>'
+      + '<span style="font-weight:700;margin-right:6px;font-size:13px">&nbsp;·&nbsp;'+verb.formNum+'</span>'
     : '<span style="opacity:.5">' + (isEn ? 'Unclassified' : 'טרם סווג') + '</span>';
   const rootTagHtml = isEn
     ? (verb.root ? 'Root ' + verb.root : 'Root — not yet identified')
