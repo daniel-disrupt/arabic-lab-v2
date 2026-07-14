@@ -154,6 +154,18 @@ app.use('/preview/app', async (req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 db.init()
+  .then(() => {
+    // Clone the repo working copy BEFORE opening the port, not on the first Publish/Unpublish/
+    // Preview request -- the initial `git clone` includes the public repo's full history
+    // (video/audio media, ~90MB+), which can take long enough that a request triggering it
+    // could silently fail (client/gateway timeout, no error surfaced) instead of just being
+    // slow. Doing it here blocks startup, not request-handling, and can't race a real request
+    // into cloning the same directory twice.
+    if (process.env.REPO_URL) {
+      try { ensureRepo(); console.log('Repo working copy ready.'); }
+      catch (err) { console.error('Warm repo clone failed at startup (will retry on first publish/preview):', err.message); }
+    }
+  })
   .then(() => app.listen(PORT, () => console.log('Arabic Lab CMS listening on :' + PORT)))
   .catch((err) => { console.error('Failed to initialize database', err); process.exit(1); });
 

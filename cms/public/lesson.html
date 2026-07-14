@@ -141,37 +141,66 @@ document.querySelectorAll('input[type=file]').forEach(input => {
   });
 });
 
-document.getElementById('publish-btn').addEventListener('click', async () => {
-  const resultEl = document.getElementById('publish-result');
-  resultEl.textContent = 'Publishing…';
-  const res = await fetch(`/api/lessons/${slug}/publish`, { method: 'POST' });
-  const data = await res.json();
-  if (!res.ok) { resultEl.textContent = 'Failed: ' + (data.error || 'unknown error'); return; }
-  resultEl.textContent = data.pushed ? 'Published — pushed to master.' : 'No changes to publish.';
-  await load();
-});
+// Publish/unpublish/delete all hit the CMS's git plumbing, which can be genuinely slow the
+// first time (cloning the repo's full history, ~90MB+ of media) -- slow enough that a bare
+// `await fetch(...)` with no timeout/catch can look exactly like "nothing happened" if the
+// connection drops or a gateway times out. This wrapper makes the pending/failed states
+// impossible to miss and, critically, blocks a confused second click from firing a second
+// request while the first is still in flight.
+function withBusyButton(btn, resultEl, run) {
+  return async () => {
+    if (btn.disabled) return; // already in flight -- ignore a fast double-click
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = originalText + '…';
+    try {
+      await run();
+    } catch (err) {
+      resultEl.textContent = 'Failed: ' + err.message + ' (network error or the request timed out -- safe to retry)';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  };
+}
 
-document.getElementById('unpublish-btn').addEventListener('click', async () => {
-  if (!confirm(`Take "${lesson.title}" down off the live site? It stays in the CMS as a draft — you can re-publish later.`)) return;
-  const resultEl = document.getElementById('publish-result');
-  resultEl.textContent = 'Unpublishing…';
-  const res = await fetch(`/api/lessons/${slug}/unpublish`, { method: 'POST' });
-  const data = await res.json();
-  if (!res.ok) { resultEl.textContent = 'Failed: ' + (data.error || 'unknown error'); return; }
-  resultEl.textContent = data.pushed ? 'Unpublished — removed from the live site.' : (data.reason || 'Nothing to unpublish.');
-  await load();
-});
+document.getElementById('publish-btn').addEventListener('click', withBusyButton(
+  document.getElementById('publish-btn'), document.getElementById('publish-result'), async () => {
+    const resultEl = document.getElementById('publish-result');
+    resultEl.textContent = 'Publishing… (can take a while on the first publish after a deploy)';
+    const res = await fetch(`/api/lessons/${slug}/publish`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) { resultEl.textContent = 'Failed: ' + (data.error || 'unknown error'); return; }
+    resultEl.textContent = data.pushed ? 'Published — pushed to master.' : 'No changes to publish.';
+    await load();
+  }
+));
 
-document.getElementById('delete-btn').addEventListener('click', async () => {
-  const warn = lesson.status === 'published'
-    ? `Delete "${lesson.title}" entirely? This also takes it down off the live site first — this cannot be undone.`
-    : `Delete "${lesson.title}" entirely? This cannot be undone.`;
-  if (!confirm(warn)) return;
-  const res = await fetch(`/api/lessons/${slug}`, { method: 'DELETE' });
-  const data = await res.json();
-  if (!res.ok) { alert('Failed: ' + (data.error || 'unknown error')); return; }
-  location.href = '/index.html';
-});
+document.getElementById('unpublish-btn').addEventListener('click', withBusyButton(
+  document.getElementById('unpublish-btn'), document.getElementById('publish-result'), async () => {
+    if (!confirm(`Take "${lesson.title}" down off the live site? It stays in the CMS as a draft — you can re-publish later.`)) return;
+    const resultEl = document.getElementById('publish-result');
+    resultEl.textContent = 'Unpublishing…';
+    const res = await fetch(`/api/lessons/${slug}/unpublish`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) { resultEl.textContent = 'Failed: ' + (data.error || 'unknown error'); return; }
+    resultEl.textContent = data.pushed ? 'Unpublished — removed from the live site.' : (data.reason || 'Nothing to unpublish.');
+    await load();
+  }
+));
+
+document.getElementById('delete-btn').addEventListener('click', withBusyButton(
+  document.getElementById('delete-btn'), document.getElementById('publish-result'), async () => {
+    const warn = lesson.status === 'published'
+      ? `Delete "${lesson.title}" entirely? This also takes it down off the live site first — this cannot be undone.`
+      : `Delete "${lesson.title}" entirely? This cannot be undone.`;
+    if (!confirm(warn)) return;
+    const res = await fetch(`/api/lessons/${slug}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) { alert('Failed: ' + (data.error || 'unknown error')); return; }
+    location.href = '/index.html';
+  }
+));
 
 async function load() {
   const res = await fetch(`/api/lessons/${slug}`);
